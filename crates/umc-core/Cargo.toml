@@ -1,0 +1,19 @@
+[package]
+name = "umc-core"
+version = "0.1.0"
+edition = "2021"
+description = "UMC Universal IR, traits, types, and error types"
+
+[dependencies]
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+memmap2     = { workspace = true }
+indexmap    = { workspace = true }
+xxhash-rust = { workspace = true }
+sha2        = { workspace = true }
+hex         = { workspace = true }
+thiserror   = { workspace = true }
+tracing     = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

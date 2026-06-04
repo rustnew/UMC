@@ -1,0 +1,20 @@
+[package]
+name = "umc-pipeline"
+version = "0.1.0"
+edition = "2021"
+description = "UMC 3-thread conversion pipeline with watchdog and cancellation"
+
+[dependencies]
+umc-core      = { path = "../umc-core" }
+umc-detect    = { path = "../umc-detect" }
+umc-graph     = { path = "../umc-graph" }
+umc-validate  = { path = "../umc-validate" }
+umc-formats   = { path = "../umc-formats" }
+crossbeam     = { workspace = true }
+rayon         = { workspace = true }
+tracing       = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+
+[dev-dependencies]
+tempfile      = { workspace = true }

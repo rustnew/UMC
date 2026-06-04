@@ -1,0 +1,23 @@
+[package]
+name = "umc-formats"
+version = "0.1.0"
+edition = "2021"
+description = "UMC native format loaders and savers (GGUF, SafeTensors, ONNX…)"
+
+[dependencies]
+umc-core    = { path = "../umc-core" }
+memmap2     = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+indexmap    = { workspace = true }
+rayon       = { workspace = true }
+xxhash-rust = { workspace = true }
+sha2        = { workspace = true }
+hex         = { workspace = true }
+prost       = { workspace = true }
+zip         = { workspace = true }
+tracing     = { workspace = true }
+thiserror   = { workspace = true }
+
+[dev-dependencies]
+tempfile    = { workspace = true }

@@ -1,0 +1,45 @@
+# ─── Fichiers de modèles (lourds) ───
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.onnx
+*.tflite
+*.mlmodel
+*.mlpackage
+*.engine
+*.plan
+*.ckpt
+*.h5
+*.keras
+*.msgpack
+
+# ─── Dossiers de compilation Rust ───
+target/
+**/target/
+
+# ─── Fichiers de build ───
+Cargo.lock
+
+# ─── Fichiers sensibles ───
+.env
+.env.local
+*.pem
+*.key
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Node (frontend) ───
+node_modules/
+.next/
+out/
+dist/

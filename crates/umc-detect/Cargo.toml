@@ -1,0 +1,12 @@
+[package]
+name = "umc-detect"
+version = "0.1.0"
+edition = "2021"
+description = "UMC automatic format detection (magic bytes + heuristics)"
+
+[dependencies]
+umc-core  = { path = "../umc-core" }
+tracing   = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

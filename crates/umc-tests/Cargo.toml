@@ -1,0 +1,17 @@
+[package]
+name = "umc-tests"
+version = "0.1.0"
+edition = "2021"
+description = "UMC integration and end-to-end tests"
+publish = false
+
+[dependencies]
+umc-core      = { path = "../umc-core" }
+umc-detect    = { path = "../umc-detect" }
+umc-graph     = { path = "../umc-graph" }
+umc-pipeline  = { path = "../umc-pipeline" }
+umc-formats   = { path = "../umc-formats" }
+umc-validate  = { path = "../umc-validate" }
+tempfile      = { workspace = true }
+serde_json    = { workspace = true }
+prost         = { workspace = true }

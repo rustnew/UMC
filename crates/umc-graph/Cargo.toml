@@ -1,0 +1,10 @@
+[package]
+name = "umc-graph"
+version = "0.1.0"
+edition = "2021"
+description = "UMC Dijkstra conversion graph + GraphTemplate registry"
+
+[dependencies]
+umc-core  = { path = "../umc-core" }
+petgraph  = { workspace = true }
+tracing   = { workspace = true }

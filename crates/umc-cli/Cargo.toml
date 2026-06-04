@@ -1,0 +1,21 @@
+[package]
+name = "umc-cli"
+version = "0.1.0"
+edition = "2021"
+description = "UMC command-line interface"
+
+[[bin]]
+name = "umc"
+path = "src/main.rs"
+
+[dependencies]
+umc-core      = { path = "../umc-core" }
+umc-detect    = { path = "../umc-detect" }
+umc-graph     = { path = "../umc-graph" }
+umc-pipeline  = { path = "../umc-pipeline" }
+umc-formats   = { path = "../umc-formats" }
+umc-validate  = { path = "../umc-validate" }
+clap          = { workspace = true }
+serde_json    = { workspace = true }
+tracing       = { workspace = true }
+tracing-subscriber = { workspace = true }
