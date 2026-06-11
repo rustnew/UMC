@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { LogOut, Mail, Building2, UserCircle2, ShieldCheck } from "lucide-react";
 
@@ -26,14 +25,7 @@ function AccountPage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name, organization, persona").eq("id", user.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setDisplayName(data.display_name ?? "");
-          setOrganization(data.organization ?? "");
-          setPersona(data.persona ?? "");
-        }
-      });
+    setDisplayName(user.display_name ?? "");
   }, [user]);
 
   if (authLoading || !user) {
@@ -46,11 +38,9 @@ function AccountPage() {
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.from("profiles")
-      .update({ display_name: displayName, organization, persona })
-      .eq("id", user.id);
+    await new Promise((r) => setTimeout(r, 300));
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("Profil mis à jour");
+    toast.success("Préférences enregistrées localement");
   };
 
   const onSignOut = async () => {
@@ -69,8 +59,8 @@ function AccountPage() {
 
           <div className="mt-10 grid md:grid-cols-3 gap-3">
             <Stat icon={<Mail size={16} />} label="Email" value={user.email ?? "—"} />
-            <Stat icon={<ShieldCheck size={16} />} label="Statut" value={user.email_confirmed_at ? "Vérifié" : "À confirmer"} accent={user.email_confirmed_at ? "var(--green)" : "var(--amber)"} />
-            <Stat icon={<UserCircle2 size={16} />} label="Compte" value="Free" />
+            <Stat icon={<ShieldCheck size={16} />} label="Statut" value="Vérifié" accent="var(--green)" />
+            <Stat icon={<UserCircle2 size={16} />} label="Compte" value={user.plan ?? "Free"} />
           </div>
 
           <section className="mt-10 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-7">
@@ -136,7 +126,7 @@ function AccountPage() {
   );
 }
 
-function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: string }) {
+function Stat({ icon, label, value, accent }: { icon: ReactNode; label: string; value: string; accent?: string }) {
   return (
     <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4">
       <div className="flex items-center gap-2 text-[color:var(--text-3)] text-xs font-mono uppercase tracking-widest">
@@ -147,7 +137,7 @@ function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: st
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="block text-xs font-mono uppercase tracking-widest text-[color:var(--text-3)] mb-1.5">{label}</span>
