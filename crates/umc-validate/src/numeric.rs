@@ -1,4 +1,4 @@
-use umc_core::{UniversalIR, DType, UmcError};
+use umc_core::{DType, UmcError, UniversalIR};
 
 /// Per-tensor divergence measurement.
 #[derive(Debug, Clone)]
@@ -44,7 +44,7 @@ pub fn divergence_threshold(before_dtype: &DType, after_dtype: &DType) -> f64 {
         (DType::F32, DType::BF16) | (DType::BF16, DType::F32) => 2e-2,
         (DType::F32, DType::Q4KM) | (DType::Q4KM, DType::F32) => 1e-2,
         (DType::F32, DType::Q8_0) | (DType::Q8_0, DType::F32) => 1e-3,
-        _ => 1e-4,  // Conservative default
+        _ => 1e-4, // Conservative default
     }
 }
 
@@ -73,9 +73,8 @@ pub fn numeric_validate(
             continue;
         }
 
-        let threshold = threshold_override.unwrap_or_else(|| {
-            divergence_threshold(&before_tensor.dtype, &after_tensor.dtype)
-        });
+        let threshold = threshold_override
+            .unwrap_or_else(|| divergence_threshold(&before_tensor.dtype, &after_tensor.dtype));
 
         let before_bytes = match before_tensor.data.as_bytes() {
             Ok(b) => b,
@@ -91,14 +90,21 @@ pub fn numeric_validate(
         }
 
         let n = before_bytes.len() / 4;
-        if n == 0 { continue; }
+        if n == 0 {
+            continue;
+        }
 
         let mut max_err = 0.0f32;
         let mut sum_err = 0.0f64;
 
         for i in 0..n {
-            let a = f32::from_le_bytes(before_bytes[i*4..(i+1)*4].try_into().unwrap_or([0;4]));
-            let b = f32::from_le_bytes(after_bytes[i*4..(i+1)*4].try_into().unwrap_or([0;4]));
+            let a = f32::from_le_bytes(
+                before_bytes[i * 4..(i + 1) * 4]
+                    .try_into()
+                    .unwrap_or([0; 4]),
+            );
+            let b =
+                f32::from_le_bytes(after_bytes[i * 4..(i + 1) * 4].try_into().unwrap_or([0; 4]));
             let err = (a - b).abs();
             max_err = max_err.max(err);
             sum_err += err as f64;
@@ -140,8 +146,8 @@ pub fn numeric_validate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umc_core::{UniversalIR, Tensor};
     use std::path::Path;
+    use umc_core::{Tensor, UniversalIR};
 
     fn f32_to_le_bytes(v: &[f32]) -> Vec<u8> {
         v.iter().flat_map(|f| f.to_le_bytes()).collect()

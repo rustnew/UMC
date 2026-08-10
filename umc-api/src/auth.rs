@@ -1,5 +1,5 @@
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::{rand_core::OsRng, SaltString};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use crate::errors::ApiError;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    pub sub: String,  // user id
+    pub sub: String, // user id
     pub email: String,
     pub plan: String,
     pub exp: usize,
@@ -66,8 +66,8 @@ pub fn hash_password(password: &str) -> Result<String, ApiError> {
 }
 
 pub fn verify_password(password: &str, hash: &str) -> Result<bool, ApiError> {
-    let parsed_hash = PasswordHash::new(hash)
-        .map_err(|e| ApiError::Internal(format!("Password parse: {e}")))?;
+    let parsed_hash =
+        PasswordHash::new(hash).map_err(|e| ApiError::Internal(format!("Password parse: {e}")))?;
     Ok(Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok())

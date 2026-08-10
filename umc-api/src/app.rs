@@ -1,6 +1,6 @@
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer, middleware};
 use actix_web::ResponseError as _;
+use actix_web::{middleware, web, App, HttpServer};
 
 use crate::{
     handlers::{auth, formats, health, jobs, progress, upload},
@@ -12,7 +12,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         // Health
         .route("/health", web::get().to(health::health))
         .route("/ready", web::get().to(health::readiness))
-
         // Auth
         .service(
             web::scope("/auth")
@@ -20,19 +19,16 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
                 .route("/login", web::post().to(auth::login))
                 .route("/refresh", web::post().to(auth::refresh))
                 .route("/logout", web::post().to(auth::logout))
-                .route("/me", web::get().to(auth::me))
+                .route("/me", web::get().to(auth::me)),
         )
-
         // API v1
         .service(
             web::scope("/v1")
                 // Formats
                 .route("/formats", web::get().to(formats::list_formats))
                 .route("/formats/graph", web::get().to(formats::conversion_graph))
-
                 // Upload
                 .route("/upload", web::post().to(upload::upload_file))
-
                 // Jobs
                 .service(
                     web::scope("/jobs")
@@ -41,8 +37,8 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
                         .route("/{id}", web::get().to(jobs::get_job))
                         .route("/{id}", web::delete().to(jobs::cancel_job))
                         .route("/{id}/download", web::get().to(jobs::download_job))
-                        .route("/{id}/progress", web::get().to(progress::job_progress_sse))
-                )
+                        .route("/{id}/progress", web::get().to(progress::job_progress_sse)),
+                ),
         );
 }
 
@@ -77,8 +73,8 @@ pub async fn create_server(
                 web::JsonConfig::default()
                     .limit(10 * 1024 * 1024) // 10 MiB JSON limit
                     .error_handler(|err, _| {
-                        let response = crate::errors::ApiError::BadRequest(err.to_string())
-                            .error_response();
+                        let response =
+                            crate::errors::ApiError::BadRequest(err.to_string()).error_response();
                         actix_web::error::InternalError::from_response(err, response).into()
                     }),
             )

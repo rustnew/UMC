@@ -37,7 +37,8 @@ pub fn write_gguf_v3_with_f32_tensors(
     for (name, shape, values) in tensors {
         // name
         let name_bytes = name.as_bytes();
-        f.write_all(&(name_bytes.len() as u64).to_le_bytes()).unwrap();
+        f.write_all(&(name_bytes.len() as u64).to_le_bytes())
+            .unwrap();
         f.write_all(name_bytes).unwrap();
         // n_dims
         f.write_all(&(shape.len() as u32).to_le_bytes()).unwrap();
@@ -82,11 +83,14 @@ pub fn write_safetensors_f32(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> tempfi
     for (name, shape, values) in tensors {
         let bytes: Vec<u8> = values.iter().flat_map(|v: &f32| v.to_le_bytes()).collect();
         let end = offset + bytes.len() as u64;
-        header_map.insert(name.to_string(), serde_json::json!({
-            "dtype": "F32",
-            "shape": shape,
-            "data_offsets": [offset, end],
-        }));
+        header_map.insert(
+            name.to_string(),
+            serde_json::json!({
+                "dtype": "F32",
+                "shape": shape,
+                "data_offsets": [offset, end],
+            }),
+        );
         offset = end;
         data_parts.push(bytes);
     }
@@ -95,7 +99,8 @@ pub fn write_safetensors_f32(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> tempfi
     let json_bytes = json.as_bytes();
 
     let mut f = tempfile::NamedTempFile::with_suffix(".safetensors").unwrap();
-    f.write_all(&(json_bytes.len() as u64).to_le_bytes()).unwrap();
+    f.write_all(&(json_bytes.len() as u64).to_le_bytes())
+        .unwrap();
     f.write_all(json_bytes).unwrap();
     for part in &data_parts {
         f.write_all(part).unwrap();

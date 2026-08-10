@@ -105,7 +105,9 @@ pub struct CreateJobRequest {
     pub upload_id: String,
 }
 
-fn default_validate_mode() -> String { "structural".into() }
+fn default_validate_mode() -> String {
+    "structural".into()
+}
 
 #[derive(Debug, Deserialize, Default)]
 pub struct JobListQuery {
@@ -116,7 +118,9 @@ pub struct JobListQuery {
     pub status: Option<String>,
 }
 
-fn default_limit() -> i64 { 20 }
+fn default_limit() -> i64 {
+    20
+}
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 

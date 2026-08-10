@@ -1,19 +1,27 @@
+use super::run_external;
 /// ExecuTorch saver — converts ONNX → ExecuTorch .pte via executorch tools.
 /// Requires: ExecuTorch Python package (pip install executorch).
 use std::path::Path;
+use umc_core::{FormatSaver, ProgressCallback, SaveOptions};
 use umc_core::{UmcError, UniversalIR};
-use umc_core::{FormatSaver, SaveOptions, ProgressCallback};
-use super::run_external;
 
 pub struct ExecuTorchSaver;
 
 impl FormatSaver for ExecuTorchSaver {
-    fn format_name(&self) -> &'static str { "ExecuTorch" }
-    fn default_extension(&self) -> &'static str { "pte" }
+    fn format_name(&self) -> &'static str {
+        "ExecuTorch"
+    }
+    fn default_extension(&self) -> &'static str {
+        "pte"
+    }
 
-    fn save(&self, ir: &UniversalIR, path: &Path, opts: &SaveOptions, progress: &ProgressCallback)
-        -> Result<(), UmcError>
-    {
+    fn save(
+        &self,
+        ir: &UniversalIR,
+        path: &Path,
+        opts: &SaveOptions,
+        progress: &ProgressCallback,
+    ) -> Result<(), UmcError> {
         progress.report("ExecuTorch: saving via ONNX intermediate + executorch");
 
         let onnx_tmp = path.with_extension("_umc_tmp.onnx");
@@ -35,9 +43,12 @@ impl FormatSaver for ExecuTorchSaver {
 
         match result {
             Ok(_) => progress.report("ExecuTorch: saved"),
-            Err(e) => return Err(UmcError::Other(format!(
-                "ExecuTorch: {}. Ensure executorch is installed: pip install executorch", e
-            ))),
+            Err(e) => {
+                return Err(UmcError::Other(format!(
+                    "ExecuTorch: {}. Ensure executorch is installed: pip install executorch",
+                    e
+                )))
+            }
         }
         Ok(())
     }

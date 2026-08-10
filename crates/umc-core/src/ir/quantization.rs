@@ -4,14 +4,29 @@ use crate::{DType, UmcError};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum QuantScheme {
-    GgufQ2K, GgufQ3KS, GgufQ3KM, GgufQ3KL,
-    GgufQ4_0, GgufQ4_1, GgufQ4KS, GgufQ4KM,
-    GgufQ5_0, GgufQ5_1, GgufQ5KS, GgufQ5KM,
-    GgufQ6K, GgufQ8_0, GgufQ8K,
-    AwqGemm4, AwqGemv4, AwqGemm8,
+    GgufQ2K,
+    GgufQ3KS,
+    GgufQ3KM,
+    GgufQ3KL,
+    GgufQ4_0,
+    GgufQ4_1,
+    GgufQ4KS,
+    GgufQ4KM,
+    GgufQ5_0,
+    GgufQ5_1,
+    GgufQ5KS,
+    GgufQ5KM,
+    GgufQ6K,
+    GgufQ8_0,
+    GgufQ8K,
+    AwqGemm4,
+    AwqGemv4,
+    AwqGemm8,
     Gptq { bits: u8, sym: bool },
-    BnbNF4, BnbFP4,
-    SymmetricInt8, AsymmetricInt8,
+    BnbNF4,
+    BnbFP4,
+    SymmetricInt8,
+    AsymmetricInt8,
     Custom(String),
 }
 
@@ -20,13 +35,22 @@ impl QuantScheme {
         match self {
             Self::GgufQ2K | Self::Gptq { bits: 2, .. } => 2,
             Self::GgufQ3KS | Self::GgufQ3KM | Self::GgufQ3KL => 3,
-            Self::GgufQ4_0 | Self::GgufQ4_1 | Self::GgufQ4KS | Self::GgufQ4KM
-            | Self::AwqGemm4 | Self::AwqGemv4 | Self::Gptq { bits: 4, .. }
-            | Self::BnbNF4 | Self::BnbFP4 => 4,
+            Self::GgufQ4_0
+            | Self::GgufQ4_1
+            | Self::GgufQ4KS
+            | Self::GgufQ4KM
+            | Self::AwqGemm4
+            | Self::AwqGemv4
+            | Self::Gptq { bits: 4, .. }
+            | Self::BnbNF4
+            | Self::BnbFP4 => 4,
             Self::GgufQ5_0 | Self::GgufQ5_1 | Self::GgufQ5KS | Self::GgufQ5KM => 5,
             Self::GgufQ6K => 6,
-            Self::GgufQ8_0 | Self::GgufQ8K | Self::AwqGemm8
-            | Self::SymmetricInt8 | Self::AsymmetricInt8 => 8,
+            Self::GgufQ8_0
+            | Self::GgufQ8K
+            | Self::AwqGemm8
+            | Self::SymmetricInt8
+            | Self::AsymmetricInt8 => 8,
             _ => 0,
         }
     }
@@ -36,9 +60,9 @@ impl QuantScheme {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StorageOrder {
-    Sequential,   // weights then scales, separate (GPTQ)
-    Interleaved,  // weights and scales interleaved per group (AWQ)
-    BlockPacked,  // full blocks with embedded scales (GGUF)
+    Sequential,  // weights then scales, separate (GPTQ)
+    Interleaved, // weights and scales interleaved per group (AWQ)
+    BlockPacked, // full blocks with embedded scales (GGUF)
 }
 
 // ── TensorQuantization ────────────────────────────────────────────────────────
@@ -220,7 +244,7 @@ mod tests {
             scales: vec![1.0],
             zero_points: vec![0.0],
             scales_dtype: DType::F32,
-            quantized_data: vec![0x21, 0x43],  // nibbles: 1,2,3,4
+            quantized_data: vec![0x21, 0x43], // nibbles: 1,2,3,4
             storage_order: StorageOrder::BlockPacked,
         };
         let out = quant.dequantize_to_f32().unwrap();

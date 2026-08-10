@@ -1,19 +1,14 @@
+use super::dtype_map::{ggml_row_size, ggml_type_to_dtype};
+use super::spec::{GgmlType, GgufMetaValueType, GGUF_MAGIC};
+use memmap2::Mmap;
+use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::sync::Arc;
-use memmap2::Mmap;
-use sha2::{Sha256, Digest};
 use umc_core::{
-    UmcError, UniversalIR,
-    FormatLoader, LoadOptions, ProgressCallback,
-    Tensor,
-    MetadataStore, MetaValue, ArchitectureConfig,
-    GraphContent, TokenizerStore,
-    ir::tokenizer::TokenizerType,
-    ir::provenance::ProvenanceEntryData,
-    UMC_VERSION,
+    ir::provenance::ProvenanceEntryData, ir::tokenizer::TokenizerType, ArchitectureConfig,
+    FormatLoader, GraphContent, LoadOptions, MetaValue, MetadataStore, ProgressCallback, Tensor,
+    TokenizerStore, UmcError, UniversalIR, UMC_VERSION,
 };
-use super::spec::{GGUF_MAGIC, GgufMetaValueType, GgmlType};
-use super::dtype_map::{ggml_type_to_dtype, ggml_row_size};
 
 // ── Binary reader helper ──────────────────────────────────────────────────────
 
@@ -25,7 +20,11 @@ struct Cursor<'a> {
 
 impl<'a> Cursor<'a> {
     fn new(data: &'a [u8], version: u32) -> Self {
-        Self { data, pos: 0, version }
+        Self {
+            data,
+            pos: 0,
+            version,
+        }
     }
 
     #[allow(dead_code)]
@@ -65,8 +64,11 @@ impl<'a> Cursor<'a> {
 
     fn read_u64_le(&mut self) -> Result<u64, UmcError> {
         let b = self.read_bytes(8)?;
-        Ok(u64::from_le_bytes(b.try_into().map_err(|_| UmcError::UnexpectedEof {
-            context: "read_u64".into(), offset: self.pos as u64,
+        Ok(u64::from_le_bytes(b.try_into().map_err(|_| {
+            UmcError::UnexpectedEof {
+                context: "read_u64".into(),
+                offset: self.pos as u64,
+            }
         })?))
     }
 
@@ -81,8 +83,11 @@ impl<'a> Cursor<'a> {
 
     fn read_f64_le(&mut self) -> Result<f64, UmcError> {
         let b = self.read_bytes(8)?;
-        Ok(f64::from_le_bytes(b.try_into().map_err(|_| UmcError::UnexpectedEof {
-            context: "read_f64".into(), offset: self.pos as u64,
+        Ok(f64::from_le_bytes(b.try_into().map_err(|_| {
+            UmcError::UnexpectedEof {
+                context: "read_f64".into(),
+                offset: self.pos as u64,
+            }
         })?))
     }
 
@@ -122,22 +127,23 @@ impl<'a> Cursor<'a> {
 
 fn read_meta_value(cur: &mut Cursor, vtype: GgufMetaValueType) -> Result<MetaValue, UmcError> {
     match vtype {
-        GgufMetaValueType::Uint8   => Ok(MetaValue::I64(cur.read_u8()? as i64)),
-        GgufMetaValueType::Int8    => Ok(MetaValue::I64(cur.read_u8()? as i8 as i64)),
-        GgufMetaValueType::Uint16  => Ok(MetaValue::I64(cur.read_u16_le()? as i64)),
-        GgufMetaValueType::Int16   => Ok(MetaValue::I64(cur.read_u16_le()? as i16 as i64)),
-        GgufMetaValueType::Uint32  => Ok(MetaValue::I64(cur.read_u32_le()? as i64)),
-        GgufMetaValueType::Int32   => Ok(MetaValue::I64(cur.read_i32_le()? as i64)),
-        GgufMetaValueType::Uint64  => Ok(MetaValue::I64(cur.read_u64_le()? as i64)),
-        GgufMetaValueType::Int64   => Ok(MetaValue::I64(cur.read_i64_le()?)),
+        GgufMetaValueType::Uint8 => Ok(MetaValue::I64(cur.read_u8()? as i64)),
+        GgufMetaValueType::Int8 => Ok(MetaValue::I64(cur.read_u8()? as i8 as i64)),
+        GgufMetaValueType::Uint16 => Ok(MetaValue::I64(cur.read_u16_le()? as i64)),
+        GgufMetaValueType::Int16 => Ok(MetaValue::I64(cur.read_u16_le()? as i16 as i64)),
+        GgufMetaValueType::Uint32 => Ok(MetaValue::I64(cur.read_u32_le()? as i64)),
+        GgufMetaValueType::Int32 => Ok(MetaValue::I64(cur.read_i32_le()? as i64)),
+        GgufMetaValueType::Uint64 => Ok(MetaValue::I64(cur.read_u64_le()? as i64)),
+        GgufMetaValueType::Int64 => Ok(MetaValue::I64(cur.read_i64_le()?)),
         GgufMetaValueType::Float32 => Ok(MetaValue::F64(cur.read_f32_le()? as f64)),
         GgufMetaValueType::Float64 => Ok(MetaValue::F64(cur.read_f64_le()?)),
-        GgufMetaValueType::Bool    => Ok(MetaValue::Bool(cur.read_u8()? != 0)),
-        GgufMetaValueType::String  => Ok(MetaValue::String(cur.read_string()?)),
-        GgufMetaValueType::Array   => {
+        GgufMetaValueType::Bool => Ok(MetaValue::Bool(cur.read_u8()? != 0)),
+        GgufMetaValueType::String => Ok(MetaValue::String(cur.read_string()?)),
+        GgufMetaValueType::Array => {
             let elem_type_raw = cur.read_u32_le()?;
-            let elem_type = GgufMetaValueType::from_u32(elem_type_raw)
-                .ok_or_else(|| UmcError::Other(format!("Unknown array elem type: {}", elem_type_raw)))?;
+            let elem_type = GgufMetaValueType::from_u32(elem_type_raw).ok_or_else(|| {
+                UmcError::Other(format!("Unknown array elem type: {}", elem_type_raw))
+            })?;
             let count = cur.read_count()?;
             // Security: max 100k elements per array
             if count > 100_000 {
@@ -172,10 +178,14 @@ struct TensorInfo {
 pub struct GgufLoader;
 
 impl FormatLoader for GgufLoader {
-    fn format_name(&self) -> &'static str { "GGUF" }
+    fn format_name(&self) -> &'static str {
+        "GGUF"
+    }
 
     fn can_load(&self, path: &Path) -> bool {
-        let Ok(mut f) = std::fs::File::open(path) else { return false; };
+        let Ok(mut f) = std::fs::File::open(path) else {
+            return false;
+        };
         let mut buf = [0u8; 4];
         use std::io::Read;
         f.read_exact(&mut buf).map_or(false, |_| &buf == GGUF_MAGIC)
@@ -249,9 +259,7 @@ impl FormatLoader for GgufLoader {
             });
         }
 
-        progress.report(&format!(
-            "Reading {} metadata entries…", metadata_kv_count
-        ));
+        progress.report(&format!("Reading {} metadata entries…", metadata_kv_count));
 
         // ── Metadata ──────────────────────────────────────────────────────
         let mut metadata = MetadataStore::default();
@@ -266,9 +274,7 @@ impl FormatLoader for GgufLoader {
         }
 
         progress.set_total(tensor_count);
-        progress.report(&format!(
-            "Reading {} tensor infos…", tensor_count
-        ));
+        progress.report(&format!("Reading {} tensor infos…", tensor_count));
 
         // ── Tensor infos ──────────────────────────────────────────────────
         let mut tensor_infos = Vec::with_capacity(tensor_count as usize);
@@ -298,9 +304,8 @@ impl FormatLoader for GgufLoader {
             shape.reverse();
 
             let ggml_type_raw = cur.read_u32_le()?;
-            let ggml_type = GgmlType::from_u32(ggml_type_raw).ok_or_else(|| {
-                UmcError::Other(format!("Unknown GGML type: {}", ggml_type_raw))
-            })?;
+            let ggml_type = GgmlType::from_u32(ggml_type_raw)
+                .ok_or_else(|| UmcError::Other(format!("Unknown GGML type: {}", ggml_type_raw)))?;
 
             let offset = cur.read_u64_le()?;
 
@@ -312,7 +317,13 @@ impl FormatLoader for GgufLoader {
                 ))
             })?;
 
-            tensor_infos.push(TensorInfo { name, shape, ggml_type, offset, byte_size });
+            tensor_infos.push(TensorInfo {
+                name,
+                shape,
+                ggml_type,
+                offset,
+                byte_size,
+            });
         }
 
         // Alignment padding: GGUF aligns tensor data to ALIGNMENT bytes
@@ -409,7 +420,8 @@ impl FormatLoader for GgufLoader {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn build_architecture_config(meta: &MetadataStore) -> ArchitectureConfig {
-    let arch = meta.get_str("general.architecture")
+    let arch = meta
+        .get_str("general.architecture")
         .unwrap_or("unknown")
         .to_string();
 
@@ -418,38 +430,41 @@ fn build_architecture_config(meta: &MetadataStore) -> ArchitectureConfig {
 
     ArchitectureConfig {
         architecture: arch.clone(),
-        model_type: meta.get_str("general.name")
-            .unwrap_or("")
-            .to_string(),
-        hidden_size: meta.get_i64(&format!("{}.embedding_length", p))
+        model_type: meta.get_str("general.name").unwrap_or("").to_string(),
+        hidden_size: meta
+            .get_i64(&format!("{}.embedding_length", p))
             .or_else(|| meta.get_i64(&format!("{}.n_embd", p)))
             .unwrap_or(0) as usize,
-        num_layers: meta.get_i64(&format!("{}.block_count", p))
+        num_layers: meta
+            .get_i64(&format!("{}.block_count", p))
             .or_else(|| meta.get_i64(&format!("{}.n_layer", p)))
             .unwrap_or(0) as usize,
-        num_heads: meta.get_i64(&format!("{}.attention.head_count", p))
+        num_heads: meta
+            .get_i64(&format!("{}.attention.head_count", p))
             .or_else(|| meta.get_i64(&format!("{}.n_head", p)))
             .unwrap_or(0) as usize,
-        num_kv_heads: meta.get_i64(&format!("{}.attention.head_count_kv", p))
+        num_kv_heads: meta
+            .get_i64(&format!("{}.attention.head_count_kv", p))
             .map(|v| v as usize),
-        intermediate_size: meta.get_i64(&format!("{}.feed_forward_length", p))
+        intermediate_size: meta
+            .get_i64(&format!("{}.feed_forward_length", p))
             .or_else(|| meta.get_i64(&format!("{}.n_ff", p)))
             .unwrap_or(0) as usize,
-        max_position_embeddings: meta.get_i64(&format!("{}.context_length", p))
+        max_position_embeddings: meta
+            .get_i64(&format!("{}.context_length", p))
             .or_else(|| meta.get_i64(&format!("{}.n_ctx_train", p)))
             .unwrap_or(0) as usize,
-        vocab_size: meta.get_i64("tokenizer.ggml.tokens")
+        vocab_size: meta
+            .get_i64("tokenizer.ggml.tokens")
             .map(|_| {
                 // tokens is an array — get its length via metadata
                 0usize // placeholder; computed from actual vocab
             })
-            .unwrap_or_else(|| {
-                meta.get_i64(&format!("{}.vocab_size", p)).unwrap_or(0) as usize
-            }),
+            .unwrap_or_else(|| meta.get_i64(&format!("{}.vocab_size", p)).unwrap_or(0) as usize),
         rms_norm_eps: meta.get_f64(&format!("{}.attention.layer_norm_rms_epsilon", p)),
         layer_norm_eps: meta.get_f64(&format!("{}.attention.layer_norm_epsilon", p)),
         rope_theta: meta.get_f64(&format!("{}.rope.freq_base", p)),
-        rope_scaling: None,  // TODO: parse rope_scaling from GGUF
+        rope_scaling: None, // TODO: parse rope_scaling from GGUF
         attention_bias: false,
         tie_word_embeddings: false,
         torch_dtype: None,
@@ -479,7 +494,7 @@ fn build_tokenizer(meta: &MetadataStore) -> Option<TokenizerStore> {
 fn build_quantization_store(
     tensor_infos: &[TensorInfo],
 ) -> Option<umc_core::ir::quantization::QuantizationStore> {
-    use umc_core::ir::quantization::{QuantizationStore, QuantScheme};
+    use umc_core::ir::quantization::{QuantScheme, QuantizationStore};
 
     // Determine the dominant quantization scheme from tensor types
     let mut q4km_count = 0usize;
@@ -502,7 +517,9 @@ fn build_quantization_store(
     }
 
     let total = tensor_infos.len();
-    if total == 0 { return None; }
+    if total == 0 {
+        return None;
+    }
 
     let dominant = if q4km_count * 2 > total {
         QuantScheme::GgufQ4KM
@@ -513,11 +530,11 @@ fn build_quantization_store(
     } else if q8_count * 2 > total {
         QuantScheme::GgufQ8_0
     } else if f16_count * 2 > total {
-        return None // Float model
+        return None; // Float model
     } else if f32_count * 2 > total {
-        return None // Float model
+        return None; // Float model
     } else {
-        return None
+        return None;
     };
 
     Some(QuantizationStore {
@@ -527,9 +544,26 @@ fn build_quantization_store(
 }
 
 fn is_known_architecture(arch: &str) -> bool {
-    matches!(arch, "llama" | "mistral" | "phi" | "phi2" | "gemma" | "qwen" |
-             "qwen2" | "falcon" | "gpt2" | "bloom" | "mpt" | "stablelm" |
-             "phi3" | "starcoder2" | "deepseek" | "deepseek2" | "command-r")
+    matches!(
+        arch,
+        "llama"
+            | "mistral"
+            | "phi"
+            | "phi2"
+            | "gemma"
+            | "qwen"
+            | "qwen2"
+            | "falcon"
+            | "gpt2"
+            | "bloom"
+            | "mpt"
+            | "stablelm"
+            | "phi3"
+            | "starcoder2"
+            | "deepseek"
+            | "deepseek2"
+            | "command-r"
+    )
 }
 
 fn compute_file_hash(path: &Path) -> Result<String, UmcError> {
@@ -540,12 +574,13 @@ fn compute_file_hash(path: &Path) -> Result<String, UmcError> {
     let mut buf = vec![0u8; 65536];
     loop {
         let n = file.read(&mut buf).map_err(UmcError::Io)?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         hasher.update(&buf[..n]);
     }
     Ok(hex::encode(hasher.finalize()))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -580,7 +615,8 @@ mod tests {
         let key1 = b"general.architecture";
         f.write_all(&(key1.len() as u64).to_le_bytes()).unwrap();
         f.write_all(key1).unwrap();
-        f.write_all(&(GgufMetaValueType::String as u32).to_le_bytes()).unwrap();
+        f.write_all(&(GgufMetaValueType::String as u32).to_le_bytes())
+            .unwrap();
         let val1 = b"phi";
         f.write_all(&(val1.len() as u64).to_le_bytes()).unwrap();
         f.write_all(val1).unwrap();
@@ -589,7 +625,8 @@ mod tests {
         let key2 = b"phi.block_count";
         f.write_all(&(key2.len() as u64).to_le_bytes()).unwrap();
         f.write_all(key2).unwrap();
-        f.write_all(&(GgufMetaValueType::Uint32 as u32).to_le_bytes()).unwrap();
+        f.write_all(&(GgufMetaValueType::Uint32 as u32).to_le_bytes())
+            .unwrap();
         f.write_all(&32u32.to_le_bytes()).unwrap();
 
         f.flush().unwrap();
@@ -607,7 +644,9 @@ mod tests {
     fn test_load_gguf_empty() {
         let f = write_gguf_v3_minimal();
         let loader = GgufLoader;
-        let ir = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &LoadOptions::default(), &ProgressCallback::noop())
+            .unwrap();
         assert_eq!(ir.tensors.len(), 0);
     }
 
@@ -615,7 +654,9 @@ mod tests {
     fn test_load_gguf_with_metadata() {
         let f = write_gguf_v3_with_metadata();
         let loader = GgufLoader;
-        let ir = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &LoadOptions::default(), &ProgressCallback::noop())
+            .unwrap();
         assert_eq!(ir.metadata.get_str("general.architecture"), Some("phi"));
         assert_eq!(ir.metadata.get_i64("phi.block_count"), Some(32));
         assert_eq!(ir.architecture.architecture, "phi");
@@ -642,7 +683,10 @@ mod tests {
         f.flush().unwrap();
         let loader = GgufLoader;
         let err = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop());
-        assert!(matches!(err, Err(UmcError::UnsupportedFormatVersion { .. })));
+        assert!(matches!(
+            err,
+            Err(UmcError::UnsupportedFormatVersion { .. })
+        ));
     }
 
     #[test]
@@ -651,7 +695,9 @@ mod tests {
         let loader = GgufLoader;
         let mut opts = LoadOptions::default();
         opts.metadata_only = true;
-        let ir = loader.load(f.path(), &opts, &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &opts, &ProgressCallback::noop())
+            .unwrap();
         assert!(ir.tensors.is_empty());
         assert_eq!(ir.architecture.architecture, "phi");
     }
@@ -660,7 +706,9 @@ mod tests {
     fn test_provenance_chain_appended() {
         let f = write_gguf_v3_minimal();
         let loader = GgufLoader;
-        let ir = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &LoadOptions::default(), &ProgressCallback::noop())
+            .unwrap();
         assert_eq!(ir.provenance.len(), 1);
         assert!(ir.provenance.verify());
     }

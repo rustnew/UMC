@@ -41,7 +41,9 @@ pub struct FormatRegistry {
 
 impl FormatRegistry {
     pub fn new() -> Self {
-        let mut r = Self { detectors: Vec::new() };
+        let mut r = Self {
+            detectors: Vec::new(),
+        };
         r.register_all_builtin();
         r
     }
@@ -79,7 +81,11 @@ impl FormatRegistry {
             .iter()
             .filter_map(|d| {
                 let c = d.confidence(path, &first_bytes);
-                if c > 0.0 { Some((d.as_ref(), c)) } else { None }
+                if c > 0.0 {
+                    Some((d.as_ref(), c))
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -89,13 +95,11 @@ impl FormatRegistry {
                 .then_with(|| a.0.priority().cmp(&b.0.priority()))
         });
 
-        let (detector, confidence) = candidates.first().ok_or_else(|| {
-            UmcError::UnknownFormat {
-                path: path.to_string_lossy().to_string(),
-                hint: "Run `umc formats` to see supported formats, \
+        let (detector, confidence) = candidates.first().ok_or_else(|| UmcError::UnknownFormat {
+            path: path.to_string_lossy().to_string(),
+            hint: "Run `umc formats` to see supported formats, \
                        or use `--format <FORMAT>` to specify manually."
-                    .into(),
-            }
+                .into(),
         })?;
 
         // Warn on ambiguous detection (two formats with < 0.1 confidence gap)
@@ -104,8 +108,10 @@ impl FormatRegistry {
                 "Ambiguous detection for {}: {} ({:.2}) vs {} ({:.2}). \
                  Use --format to disambiguate.",
                 path.display(),
-                detector.format_name(), confidence,
-                candidates[1].0.format_name(), candidates[1].1,
+                detector.format_name(),
+                confidence,
+                candidates[1].0.format_name(),
+                candidates[1].1,
             );
         }
 
@@ -138,7 +144,9 @@ impl FormatRegistry {
 }
 
 impl Default for FormatRegistry {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // ── Individual detectors ──────────────────────────────────────────────────────
@@ -146,8 +154,12 @@ impl Default for FormatRegistry {
 /// GGUF: magic "GGUF" (4 bytes)
 pub struct GgufDetector;
 impl FormatDetector for GgufDetector {
-    fn format_name(&self) -> &'static str { "GGUF" }
-    fn priority(&self) -> u8 { 1 }
+    fn format_name(&self) -> &'static str {
+        "GGUF"
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         if first_bytes.starts_with(b"GGUF") {
             0.99
@@ -170,32 +182,47 @@ impl FormatDetector for GgufDetector {
 /// GGML legacy: magic "GGML"
 pub struct GgmlDetector;
 impl FormatDetector for GgmlDetector {
-    fn format_name(&self) -> &'static str { "GGML" }
-    fn priority(&self) -> u8 { 1 }
-    fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
-        if first_bytes.starts_with(b"GGML") { 0.99 }
-        else if path.extension().map_or(false, |e| e == "bin") { 0.20 }
-        else { 0.0 }
+    fn format_name(&self) -> &'static str {
+        "GGML"
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn priority(&self) -> u8 {
+        1
+    }
+    fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
+        if first_bytes.starts_with(b"GGML") {
+            0.99
+        } else if path.extension().map_or(false, |e| e == "bin") {
+            0.20
+        } else {
+            0.0
+        }
+    }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// SafeTensors: 8 bytes LE size followed by '{'
 pub struct SafeTensorsDetector;
 impl FormatDetector for SafeTensorsDetector {
-    fn format_name(&self) -> &'static str { "SafeTensors" }
-    fn priority(&self) -> u8 { 1 }
+    fn format_name(&self) -> &'static str {
+        "SafeTensors"
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         if first_bytes.len() >= 9 {
-            let json_size = u64::from_le_bytes(
-                first_bytes[0..8].try_into().unwrap_or([0; 8])
-            );
+            let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0; 8]));
             if first_bytes[8] == b'{' && json_size >= 2 && json_size < 100_000_000 {
                 return 0.99;
             }
         }
-        if path.extension().map_or(false, |e| e == "safetensors") { 0.75 }
-        else { 0.0 }
+        if path.extension().map_or(false, |e| e == "safetensors") {
+            0.75
+        } else {
+            0.0
+        }
     }
     fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
         Some("1.0".into())
@@ -205,47 +232,79 @@ impl FormatDetector for SafeTensorsDetector {
 /// TFLite: FlatBuffers magic at offset 4 (TFL3/TFL2/TFL1)
 pub struct TFLiteDetector;
 impl FormatDetector for TFLiteDetector {
-    fn format_name(&self) -> &'static str { "TFLite" }
-    fn priority(&self) -> u8 { 1 }
+    fn format_name(&self) -> &'static str {
+        "TFLite"
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         if first_bytes.len() >= 8 {
             let m = &first_bytes[4..8];
-            if m == b"TFL3" || m == b"TFL2" || m == b"TFL1" { return 0.99; }
+            if m == b"TFL3" || m == b"TFL2" || m == b"TFL1" {
+                return 0.99;
+            }
         }
-        if path.extension().map_or(false, |e| e == "tflite") { 0.75 }
-        else { 0.0 }
+        if path.extension().map_or(false, |e| e == "tflite") {
+            0.75
+        } else {
+            0.0
+        }
     }
     fn detect_version(&self, _path: &Path, first_bytes: &[u8]) -> Option<String> {
         if first_bytes.len() >= 8 {
-            Some(std::str::from_utf8(&first_bytes[4..8]).unwrap_or("?").to_string())
-        } else { None }
+            Some(
+                std::str::from_utf8(&first_bytes[4..8])
+                    .unwrap_or("?")
+                    .to_string(),
+            )
+        } else {
+            None
+        }
     }
 }
 
 /// HDF5/Keras: magic \x89HDF
 pub struct HDF5Detector;
 impl FormatDetector for HDF5Detector {
-    fn format_name(&self) -> &'static str { "KerasH5" }
-    fn priority(&self) -> u8 { 1 }
+    fn format_name(&self) -> &'static str {
+        "KerasH5"
+    }
+    fn priority(&self) -> u8 {
+        1
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         if first_bytes.starts_with(&[0x89, 0x48, 0x44, 0x46]) {
-            if path.extension().map_or(false, |e| e == "h5" || e == "keras" || e == "hdf5") {
+            if path
+                .extension()
+                .map_or(false, |e| e == "h5" || e == "keras" || e == "hdf5")
+            {
                 0.99
             } else {
                 0.85
             }
-        } else { 0.0 }
+        } else {
+            0.0
+        }
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// ONNX: protobuf (starts with 0x08 or 0x0a) + .onnx extension
 pub struct OnnxDetector;
 impl FormatDetector for OnnxDetector {
-    fn format_name(&self) -> &'static str { "ONNX" }
-    fn priority(&self) -> u8 { 2 }
+    fn format_name(&self) -> &'static str {
+        "ONNX"
+    }
+    fn priority(&self) -> u8 {
+        2
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
-        let proto_magic = first_bytes.first().map_or(false, |&b| b == 0x08 || b == 0x0a);
+        let proto_magic = first_bytes
+            .first()
+            .map_or(false, |&b| b == 0x08 || b == 0x0a);
         let ext_ok = path.extension().map_or(false, |e| e == "onnx");
         match (proto_magic, ext_ok) {
             (true, true) => 0.95,
@@ -254,17 +313,25 @@ impl FormatDetector for OnnxDetector {
             _ => 0.0,
         }
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// PyTorch: ZIP magic (PK\x03\x04) + .pt/.pth/.bin extension
 pub struct PyTorchDetector;
 impl FormatDetector for PyTorchDetector {
-    fn format_name(&self) -> &'static str { "PyTorch" }
-    fn priority(&self) -> u8 { 2 }
+    fn format_name(&self) -> &'static str {
+        "PyTorch"
+    }
+    fn priority(&self) -> u8 {
+        2
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         let zip = first_bytes.starts_with(b"PK\x03\x04");
-        let ext_ok = path.extension().map_or(false, |e| e == "pt" || e == "pth" || e == "bin");
+        let ext_ok = path
+            .extension()
+            .map_or(false, |e| e == "pt" || e == "pth" || e == "bin");
         match (zip, ext_ok) {
             (true, true) => 0.90,
             (true, false) => 0.40,
@@ -272,31 +339,53 @@ impl FormatDetector for PyTorchDetector {
             _ => 0.0,
         }
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// SentencePiece: proto magic
 pub struct SentencePieceDetector;
 impl FormatDetector for SentencePieceDetector {
-    fn format_name(&self) -> &'static str { "SentencePiece" }
-    fn priority(&self) -> u8 { 2 }
-    fn confidence(&self, path: &Path, _first_bytes: &[u8]) -> f32 {
-        if path.extension().map_or(false, |e| e == "model" || e == "spm") { 0.75 }
-        else { 0.0 }
+    fn format_name(&self) -> &'static str {
+        "SentencePiece"
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn priority(&self) -> u8 {
+        2
+    }
+    fn confidence(&self, path: &Path, _first_bytes: &[u8]) -> f32 {
+        if path
+            .extension()
+            .map_or(false, |e| e == "model" || e == "spm")
+        {
+            0.75
+        } else {
+            0.0
+        }
+    }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// AWQ: SafeTensors with AWQ quantization markers in header or config.json
 pub struct AwqDetector;
 impl FormatDetector for AwqDetector {
-    fn format_name(&self) -> &'static str { "AWQ" }
-    fn priority(&self) -> u8 { 2 }
+    fn format_name(&self) -> &'static str {
+        "AWQ"
+    }
+    fn priority(&self) -> u8 {
+        2
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         // Must have SafeTensors structure
-        if first_bytes.len() < 9 { return 0.0; }
-        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0;8]));
-        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 { return 0.0; }
+        if first_bytes.len() < 9 {
+            return 0.0;
+        }
+        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0; 8]));
+        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 {
+            return 0.0;
+        }
         // Check header for AWQ tensor naming
         let header = std::str::from_utf8(&first_bytes[8..]).unwrap_or("");
         if header.contains("\"awq\"") || header.contains("scales") && header.contains("zeros") {
@@ -320,12 +409,20 @@ impl FormatDetector for AwqDetector {
 /// GPTQ: SafeTensors with GPTQ tensor patterns (qweight, qzeros, scales)
 pub struct GptqDetector;
 impl FormatDetector for GptqDetector {
-    fn format_name(&self) -> &'static str { "GPTQ" }
-    fn priority(&self) -> u8 { 2 }
+    fn format_name(&self) -> &'static str {
+        "GPTQ"
+    }
+    fn priority(&self) -> u8 {
+        2
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
-        if first_bytes.len() < 9 { return 0.0; }
-        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0;8]));
-        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 { return 0.0; }
+        if first_bytes.len() < 9 {
+            return 0.0;
+        }
+        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0; 8]));
+        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 {
+            return 0.0;
+        }
         let header = std::str::from_utf8(&first_bytes[8..]).unwrap_or("");
         if header.contains("qweight") && (header.contains("qzeros") || header.contains("scales")) {
             return 0.95;
@@ -347,36 +444,58 @@ impl FormatDetector for GptqDetector {
 /// LoRA/PEFT: SafeTensors with lora_A/lora_B tensor names
 pub struct LoraDetector;
 impl FormatDetector for LoraDetector {
-    fn format_name(&self) -> &'static str { "LoRA" }
-    fn priority(&self) -> u8 { 2 }
+    fn format_name(&self) -> &'static str {
+        "LoRA"
+    }
+    fn priority(&self) -> u8 {
+        2
+    }
     fn confidence(&self, path: &Path, first_bytes: &[u8]) -> f32 {
         // PEFT directory with adapter_config.json
         if path.is_dir() && path.join("adapter_config.json").exists() {
             return 0.95;
         }
-        if first_bytes.len() < 9 { return 0.0; }
-        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0;8]));
-        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 { return 0.0; }
+        if first_bytes.len() < 9 {
+            return 0.0;
+        }
+        let json_size = u64::from_le_bytes(first_bytes[0..8].try_into().unwrap_or([0; 8]));
+        if first_bytes[8] != b'{' || json_size < 2 || json_size >= 100_000_000 {
+            return 0.0;
+        }
         let header = std::str::from_utf8(&first_bytes[8..]).unwrap_or("");
-        if header.contains("lora_A") || header.contains("lora_B")
-            || header.contains("lora_a") || header.contains("lora_b") {
+        if header.contains("lora_A")
+            || header.contains("lora_B")
+            || header.contains("lora_a")
+            || header.contains("lora_b")
+        {
             return 0.95;
         }
         0.0
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 /// Diffusers: directory with model_index.json
 pub struct DiffusersDetector;
 impl FormatDetector for DiffusersDetector {
-    fn format_name(&self) -> &'static str { "Diffusers" }
-    fn priority(&self) -> u8 { 3 }
-    fn confidence(&self, path: &Path, _first_bytes: &[u8]) -> f32 {
-        if path.is_dir() && path.join("model_index.json").exists() { 0.95 }
-        else { 0.0 }
+    fn format_name(&self) -> &'static str {
+        "Diffusers"
     }
-    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> { None }
+    fn priority(&self) -> u8 {
+        3
+    }
+    fn confidence(&self, path: &Path, _first_bytes: &[u8]) -> f32 {
+        if path.is_dir() && path.join("model_index.json").exists() {
+            0.95
+        } else {
+            0.0
+        }
+    }
+    fn detect_version(&self, _path: &Path, _first_bytes: &[u8]) -> Option<String> {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use super::spec::{GgmlType, GgufMetaValueType, GGUF_MAGIC};
+use std::io::{BufWriter, Write};
 /// GGUF v3 saver — writes UniversalIR back to GGUF format.
 ///
 /// Compliance with regles.md:
@@ -5,22 +7,21 @@
 /// - Sémantique round-trip otherwise (same data, inferred types).
 /// - Zero-copy tensor data: bytes written directly from TensorData.
 /// - 32-byte data segment alignment (default; overridable via general.alignment).
-
 use std::path::Path;
-use std::io::{BufWriter, Write};
 use umc_core::{
-    UmcError, UniversalIR,
-    FormatSaver, SaveOptions, ProgressCallback,
-    DType, MetaValue,
+    DType, FormatSaver, MetaValue, ProgressCallback, SaveOptions, UmcError, UniversalIR,
 };
-use super::spec::{GGUF_MAGIC, GgufMetaValueType, GgmlType};
 
 pub struct GgufSaver;
 
 impl FormatSaver for GgufSaver {
-    fn format_name(&self) -> &'static str { "GGUF" }
+    fn format_name(&self) -> &'static str {
+        "GGUF"
+    }
 
-    fn default_extension(&self) -> &'static str { "gguf" }
+    fn default_extension(&self) -> &'static str {
+        "gguf"
+    }
 
     fn save(
         &self,
@@ -37,7 +38,8 @@ impl FormatSaver for GgufSaver {
         // ── 1. Collect metadata KV pairs ─────────────────────────────────
         // Check if we have raw metadata bytes in ExtensionStore (from a previous GGUF load)
         // for bit-identical round-trip.
-        let raw_meta: Option<Vec<u8>> = ir.extensions
+        let raw_meta: Option<Vec<u8>> = ir
+            .extensions
             .get("GGUF@v3/metadata_kv_raw")
             .map(|b| b.to_vec());
 
@@ -46,7 +48,8 @@ impl FormatSaver for GgufSaver {
         let tensor_count = tensors.len() as u64;
 
         // ── 2. Determine alignment ────────────────────────────────────────
-        let alignment: u64 = ir.metadata
+        let alignment: u64 = ir
+            .metadata
             .get_i64("general.alignment")
             .map(|v| v as u64)
             .unwrap_or(32);
@@ -77,8 +80,10 @@ impl FormatSaver for GgufSaver {
         // ── 6. Write header ───────────────────────────────────────────────
         w.write_all(GGUF_MAGIC).map_err(UmcError::Io)?;
         w.write_all(&3u32.to_le_bytes()).map_err(UmcError::Io)?;
-        w.write_all(&tensor_count.to_le_bytes()).map_err(UmcError::Io)?;
-        w.write_all(&metadata_kv_count.to_le_bytes()).map_err(UmcError::Io)?;
+        w.write_all(&tensor_count.to_le_bytes())
+            .map_err(UmcError::Io)?;
+        w.write_all(&metadata_kv_count.to_le_bytes())
+            .map_err(UmcError::Io)?;
 
         // ── 7. Write metadata KV pairs ────────────────────────────────────
         w.write_all(&metadata_kv_bytes).map_err(UmcError::Io)?;
@@ -92,17 +97,21 @@ impl FormatSaver for GgufSaver {
         let pos_after_header = {
             // Estimate position: magic(4)+version(4)+tensor_count(8)+metadata_kv_count(8)
             // + metadata_kv_bytes.len() + tensor_info_total_bytes
-            let ti_total: usize = tensors.iter().map(|(name, t)| {
-                8 + name.len()           // name_len(u64) + name
+            let ti_total: usize = tensors
+                .iter()
+                .map(|(name, t)| {
+                    8 + name.len()           // name_len(u64) + name
                 + 4                       // n_dims (u32)
                 + t.shape.len() * 8       // shape dims (each u64)
                 + 4                       // ggml_type (u32)
-                + 8                       // offset (u64)
-            }).sum();
+                + 8 // offset (u64)
+                })
+                .sum();
             4 + 4 + 8 + 8 + metadata_kv_bytes.len() + ti_total
         };
         let pad_needed = ((pos_after_header as u64 + alignment - 1) / alignment * alignment)
-            as usize - pos_after_header;
+            as usize
+            - pos_after_header;
         let zeroes = vec![0u8; pad_needed];
         w.write_all(&zeroes).map_err(UmcError::Io)?;
 
@@ -110,16 +119,18 @@ impl FormatSaver for GgufSaver {
         progress.set_total(tensor_count);
         let mut written_bytes: u64 = 0;
         for (idx, (name, t)) in tensors.iter().enumerate() {
-            let bytes = t.data.as_bytes().map_err(|e| UmcError::Other(
-                format!("Cannot read tensor '{}': {}", name, e)
-            ))?;
+            let bytes = t
+                .data
+                .as_bytes()
+                .map_err(|e| UmcError::Other(format!("Cannot read tensor '{}': {}", name, e)))?;
             w.write_all(bytes).map_err(UmcError::Io)?;
             written_bytes += bytes.len() as u64;
 
             // Pad each tensor to alignment boundary
             let pad = ((written_bytes + alignment - 1) / alignment * alignment) - written_bytes;
             if pad > 0 && idx + 1 < tensors.len() {
-                w.write_all(&vec![0u8; pad as usize]).map_err(UmcError::Io)?;
+                w.write_all(&vec![0u8; pad as usize])
+                    .map_err(UmcError::Io)?;
                 written_bytes += pad;
             }
             progress.increment(&format!("Wrote '{}'", name));
@@ -202,8 +213,8 @@ fn infer_array_elem_type(arr: &[MetaValue]) -> GgufMetaValueType {
     for v in arr {
         match v {
             MetaValue::String(_) => return GgufMetaValueType::String,
-            MetaValue::F64(_)    => return GgufMetaValueType::Float32,
-            MetaValue::Bool(_)   => return GgufMetaValueType::Bool,
+            MetaValue::F64(_) => return GgufMetaValueType::Float32,
+            MetaValue::Bool(_) => return GgufMetaValueType::Bool,
             _ => {}
         }
     }
@@ -238,7 +249,8 @@ fn write_tensor_info_with_offset<W: Write>(
     offset: u64,
 ) -> Result<(), UmcError> {
     // Name
-    w.write_all(&(name.len() as u64).to_le_bytes()).map_err(UmcError::Io)?;
+    w.write_all(&(name.len() as u64).to_le_bytes())
+        .map_err(UmcError::Io)?;
     w.write_all(name.as_bytes()).map_err(UmcError::Io)?;
 
     // n_dims
@@ -247,14 +259,19 @@ fn write_tensor_info_with_offset<W: Write>(
 
     // Shape in GGUF order (innermost first = reverse of our order)
     for &dim in t.shape.iter().rev() {
-        w.write_all(&(dim as u64).to_le_bytes()).map_err(UmcError::Io)?;
+        w.write_all(&(dim as u64).to_le_bytes())
+            .map_err(UmcError::Io)?;
     }
 
     // GgmlType
-    let ggml = dtype_to_ggml_type(&t.dtype).ok_or_else(|| UmcError::Other(
-        format!("Cannot map DType {:?} to GGML type for tensor '{}'", t.dtype, name)
-    ))?;
-    w.write_all(&(ggml as u32).to_le_bytes()).map_err(UmcError::Io)?;
+    let ggml = dtype_to_ggml_type(&t.dtype).ok_or_else(|| {
+        UmcError::Other(format!(
+            "Cannot map DType {:?} to GGML type for tensor '{}'",
+            t.dtype, name
+        ))
+    })?;
+    w.write_all(&(ggml as u32).to_le_bytes())
+        .map_err(UmcError::Io)?;
 
     // Data offset (relative to data segment start)
     w.write_all(&offset.to_le_bytes()).map_err(UmcError::Io)?;
@@ -266,39 +283,39 @@ fn write_tensor_info_with_offset<W: Write>(
 
 pub fn dtype_to_ggml_type(dtype: &DType) -> Option<GgmlType> {
     match dtype {
-        DType::F32   => Some(GgmlType::F32),
-        DType::F16   => Some(GgmlType::F16),
-        DType::BF16  => Some(GgmlType::BF16),
-        DType::Q4_0  => Some(GgmlType::Q4_0),
-        DType::Q4_1  => Some(GgmlType::Q4_1),
-        DType::Q5_0  => Some(GgmlType::Q5_0),
-        DType::Q5_1  => Some(GgmlType::Q5_1),
-        DType::Q8_0  => Some(GgmlType::Q8_0),
-        DType::Q2K   => Some(GgmlType::Q2K),
-        DType::Q3KS  => Some(GgmlType::Q3KS),
-        DType::Q3KM  => Some(GgmlType::Q3KM),
-        DType::Q3KL  => Some(GgmlType::Q3KL),
-        DType::Q4KS  => Some(GgmlType::Q4KS),
-        DType::Q4KM  => Some(GgmlType::Q4KM),
-        DType::Q5KS  => Some(GgmlType::Q5KS),
-        DType::Q5KM  => Some(GgmlType::Q5KM),
-        DType::Q6K   => Some(GgmlType::Q6K),
-        DType::Q8K   => Some(GgmlType::Q8K),
-        DType::I8    => Some(GgmlType::I8),
-        DType::I16   => Some(GgmlType::I16),
-        DType::I32   => Some(GgmlType::I32),
-        DType::I64   => Some(GgmlType::I64),
-        DType::F64   => Some(GgmlType::F64),
+        DType::F32 => Some(GgmlType::F32),
+        DType::F16 => Some(GgmlType::F16),
+        DType::BF16 => Some(GgmlType::BF16),
+        DType::Q4_0 => Some(GgmlType::Q4_0),
+        DType::Q4_1 => Some(GgmlType::Q4_1),
+        DType::Q5_0 => Some(GgmlType::Q5_0),
+        DType::Q5_1 => Some(GgmlType::Q5_1),
+        DType::Q8_0 => Some(GgmlType::Q8_0),
+        DType::Q2K => Some(GgmlType::Q2K),
+        DType::Q3KS => Some(GgmlType::Q3KS),
+        DType::Q3KM => Some(GgmlType::Q3KM),
+        DType::Q3KL => Some(GgmlType::Q3KL),
+        DType::Q4KS => Some(GgmlType::Q4KS),
+        DType::Q4KM => Some(GgmlType::Q4KM),
+        DType::Q5KS => Some(GgmlType::Q5KS),
+        DType::Q5KM => Some(GgmlType::Q5KM),
+        DType::Q6K => Some(GgmlType::Q6K),
+        DType::Q8K => Some(GgmlType::Q8K),
+        DType::I8 => Some(GgmlType::I8),
+        DType::I16 => Some(GgmlType::I16),
+        DType::I32 => Some(GgmlType::I32),
+        DType::I64 => Some(GgmlType::I64),
+        DType::F64 => Some(GgmlType::F64),
         DType::Custom(s) => match s.as_str() {
             "IQ2_XXS" => Some(GgmlType::IQ2XXS),
-            "IQ2_XS"  => Some(GgmlType::IQ2XS),
-            "IQ2_S"   => Some(GgmlType::IQ2S),
+            "IQ2_XS" => Some(GgmlType::IQ2XS),
+            "IQ2_S" => Some(GgmlType::IQ2S),
             "IQ3_XXS" => Some(GgmlType::IQ3XXS),
-            "IQ3_S"   => Some(GgmlType::IQ3S),
-            "IQ1_S"   => Some(GgmlType::IQ1S),
-            "IQ1_M"   => Some(GgmlType::IQ1M),
-            "IQ4_NL"  => Some(GgmlType::IQ4NL),
-            "IQ4_XS"  => Some(GgmlType::IQ4XS),
+            "IQ3_S" => Some(GgmlType::IQ3S),
+            "IQ1_S" => Some(GgmlType::IQ1S),
+            "IQ1_M" => Some(GgmlType::IQ1M),
+            "IQ4_NL" => Some(GgmlType::IQ4NL),
+            "IQ4_XS" => Some(GgmlType::IQ4XS),
             _ => None,
         },
         _ => None,
@@ -310,10 +327,10 @@ pub fn dtype_to_ggml_type(dtype: &DType) -> Option<GgmlType> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umc_core::{FormatLoader, LoadOptions, ProgressCallback, Tensor, DType};
     use crate::gguf::reader::GgufLoader;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
+    use umc_core::{DType, FormatLoader, LoadOptions, ProgressCallback, Tensor};
 
     fn write_minimal_gguf_v3() -> NamedTempFile {
         let mut f = NamedTempFile::with_suffix(".gguf").unwrap();
@@ -353,7 +370,7 @@ mod tests {
         f.write_all(&(tname.len() as u64).to_le_bytes()).unwrap();
         f.write_all(tname).unwrap();
         f.write_all(&2u32.to_le_bytes()).unwrap(); // n_dims = 2
-        // shape: GGUF stores innermost first (reversed), so [4,4] → [4,4]
+                                                   // shape: GGUF stores innermost first (reversed), so [4,4] → [4,4]
         f.write_all(&4u64.to_le_bytes()).unwrap();
         f.write_all(&4u64.to_le_bytes()).unwrap();
         f.write_all(&0u32.to_le_bytes()).unwrap(); // F32
@@ -378,14 +395,33 @@ mod tests {
     fn test_save_empty_gguf() {
         let src = write_minimal_gguf_v3();
         let loader = GgufLoader;
-        let ir = loader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(
+                src.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         let out = NamedTempFile::with_suffix(".gguf").unwrap();
         let saver = GgufSaver;
-        saver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        saver
+            .save(
+                &ir,
+                out.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         // Can be reloaded
-        let ir2 = loader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir2 = loader
+            .load(
+                out.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
         assert_eq!(ir2.tensors.len(), 0);
     }
 
@@ -393,15 +429,34 @@ mod tests {
     fn test_save_and_reload_with_metadata() {
         let src = write_gguf_v3_with_metadata_and_tensor();
         let loader = GgufLoader;
-        let ir = loader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(
+                src.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
         assert_eq!(ir.tensors.len(), 1);
         assert_eq!(ir.metadata.get_str("general.architecture"), Some("phi"));
 
         let out = NamedTempFile::with_suffix(".gguf").unwrap();
         let saver = GgufSaver;
-        saver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        saver
+            .save(
+                &ir,
+                out.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
-        let ir2 = loader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir2 = loader
+            .load(
+                out.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
         assert_eq!(ir2.tensors.len(), 1);
         assert_eq!(ir2.metadata.get_str("general.architecture"), Some("phi"));
         assert_eq!(ir2.metadata.get_i64("phi.block_count"), Some(2));
@@ -413,30 +468,64 @@ mod tests {
     fn test_tensor_data_preserved() {
         let src = write_gguf_v3_with_metadata_and_tensor();
         let loader = GgufLoader;
-        let ir = loader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(
+                src.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         let out = NamedTempFile::with_suffix(".gguf").unwrap();
-        GgufSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        GgufSaver
+            .save(
+                &ir,
+                out.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
-        let ir2 = loader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-        let t2 = ir2.tensors.get("weight").expect("tensor 'weight' not found");
+        let ir2 = loader
+            .load(
+                out.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
+        let t2 = ir2
+            .tensors
+            .get("weight")
+            .expect("tensor 'weight' not found");
 
         let bytes = t2.data.as_bytes().unwrap();
-        let floats: Vec<f32> = bytes.chunks_exact(4)
+        let floats: Vec<f32> = bytes
+            .chunks_exact(4)
             .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
             .collect();
         assert_eq!(floats.len(), 16);
         for (i, v) in floats.iter().enumerate() {
-            assert!((v - i as f32).abs() < 1e-6, "float[{}] = {} expected {}", i, v, i);
+            assert!(
+                (v - i as f32).abs() < 1e-6,
+                "float[{}] = {} expected {}",
+                i,
+                v,
+                i
+            );
         }
     }
 
     #[test]
     fn test_dtype_to_ggml_round_trip() {
         let types = [
-            DType::F32, DType::F16, DType::BF16,
-            DType::Q4KM, DType::Q5KM, DType::Q8_0,
-            DType::Q2K, DType::Q6K,
+            DType::F32,
+            DType::F16,
+            DType::BF16,
+            DType::Q4KM,
+            DType::Q5KM,
+            DType::Q8_0,
+            DType::Q2K,
+            DType::Q6K,
         ];
         for dt in &types {
             let g = dtype_to_ggml_type(dt);

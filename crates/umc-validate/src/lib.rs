@@ -1,12 +1,11 @@
-/// UMC validation and certification.
-
-pub mod structural;
-pub mod numeric;
 pub mod certificate;
+pub mod numeric;
+/// UMC validation and certification.
+pub mod structural;
 
-pub use structural::{structural_validate, StructuralReport};
+pub use certificate::{CertificateBuilder, ConversionCertificate};
 pub use numeric::{numeric_validate, NumericReport};
-pub use certificate::{ConversionCertificate, CertificateBuilder};
+pub use structural::{structural_validate, StructuralReport};
 
 use serde::{Deserialize, Serialize};
 
@@ -24,5 +23,7 @@ pub enum ValidationMode {
 }
 
 impl Default for ValidationMode {
-    fn default() -> Self { Self::Strict }
+    fn default() -> Self {
+        Self::Strict
+    }
 }

@@ -1,7 +1,6 @@
 /// Minimal ONNX protobuf message definitions, written with prost annotations.
 /// Covers the subset needed for loading/saving weight tensors (opset 21).
 /// Reference: https://github.com/onnx/onnx/blob/main/onnx/onnx.proto3
-
 use prost::Message;
 
 // ── TensorProto ───────────────────────────────────────────────────────────────
@@ -48,26 +47,26 @@ pub struct TensorProto {
 #[allow(dead_code)]
 pub enum OnnxDataType {
     Undefined = 0,
-    Float     = 1,
-    Uint8     = 2,
-    Int8      = 3,
-    Uint16    = 4,
-    Int16     = 5,
-    Int32     = 6,
-    Int64     = 7,
-    String    = 8,
-    Bool      = 9,
-    Float16   = 10,
-    Double    = 11,
-    Uint32    = 12,
-    Uint64    = 13,
+    Float = 1,
+    Uint8 = 2,
+    Int8 = 3,
+    Uint16 = 4,
+    Int16 = 5,
+    Int32 = 6,
+    Int64 = 7,
+    String = 8,
+    Bool = 9,
+    Float16 = 10,
+    Double = 11,
+    Uint32 = 12,
+    Uint64 = 13,
     Complex64 = 14,
-    Complex128= 15,
-    Bfloat16  = 16,
-    Float8e4m3fn  = 17,
-    Float8e4m3fnuz= 18,
-    Float8e5m2    = 19,
-    Float8e5m2fnuz= 20,
+    Complex128 = 15,
+    Bfloat16 = 16,
+    Float8e4m3fn = 17,
+    Float8e4m3fnuz = 18,
+    Float8e5m2 = 19,
+    Float8e5m2fnuz = 20,
 }
 
 // ── ValueInfoProto / TypeProto (minimal — only shape extraction) ──────────────

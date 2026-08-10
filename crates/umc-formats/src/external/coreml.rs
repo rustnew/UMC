@@ -1,19 +1,27 @@
+use super::run_external;
 /// CoreML saver — converts ONNX → CoreML .mlpackage via coremltools Python package.
 /// Requires: pip install coremltools
 use std::path::Path;
+use umc_core::{FormatSaver, ProgressCallback, SaveOptions};
 use umc_core::{UmcError, UniversalIR};
-use umc_core::{FormatSaver, SaveOptions, ProgressCallback};
-use super::run_external;
 
 pub struct CoreMLSaver;
 
 impl FormatSaver for CoreMLSaver {
-    fn format_name(&self) -> &'static str { "CoreML" }
-    fn default_extension(&self) -> &'static str { "mlpackage" }
+    fn format_name(&self) -> &'static str {
+        "CoreML"
+    }
+    fn default_extension(&self) -> &'static str {
+        "mlpackage"
+    }
 
-    fn save(&self, ir: &UniversalIR, path: &Path, opts: &SaveOptions, progress: &ProgressCallback)
-        -> Result<(), UmcError>
-    {
+    fn save(
+        &self,
+        ir: &UniversalIR,
+        path: &Path,
+        opts: &SaveOptions,
+        progress: &ProgressCallback,
+    ) -> Result<(), UmcError> {
         progress.report("CoreML: saving via ONNX intermediate + coremltools");
 
         // Step 1: Save IR as ONNX to a temp file

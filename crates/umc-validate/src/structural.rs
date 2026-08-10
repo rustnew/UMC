@@ -1,4 +1,4 @@
-use umc_core::{UniversalIR, UmcError};
+use umc_core::{UmcError, UniversalIR};
 
 /// Result of structural validation.
 #[derive(Debug, Clone)]
@@ -22,7 +22,10 @@ impl StructuralReport {
                 self.dtype_changes.len()
             )
         } else {
-            format!("FAIL — {}", self.shape_mismatches.first().cloned().unwrap_or_default())
+            format!(
+                "FAIL — {}",
+                self.shape_mismatches.first().cloned().unwrap_or_default()
+            )
         }
     }
 }
@@ -95,8 +98,8 @@ pub fn structural_validate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umc_core::{UniversalIR, Tensor, DType};
     use std::path::Path;
+    use umc_core::{DType, Tensor, UniversalIR};
 
     fn make_ir_with_tensor(name: &str, shape: Vec<usize>) -> UniversalIR {
         let mut ir = UniversalIR::new("TEST", Path::new("test.bin"));
@@ -126,9 +129,15 @@ mod tests {
     #[test]
     fn test_dtype_change_recorded() {
         let mut before = UniversalIR::new("TEST", Path::new("test.bin"));
-        before.tensors.insert(Tensor::from_bytes("w", DType::F32, vec![4], vec![0u8; 16])).unwrap();
+        before
+            .tensors
+            .insert(Tensor::from_bytes("w", DType::F32, vec![4], vec![0u8; 16]))
+            .unwrap();
         let mut after = UniversalIR::new("TEST", Path::new("test.bin"));
-        after.tensors.insert(Tensor::from_bytes("w", DType::F16, vec![4], vec![0u8; 8])).unwrap();
+        after
+            .tensors
+            .insert(Tensor::from_bytes("w", DType::F16, vec![4], vec![0u8; 8]))
+            .unwrap();
         let report = structural_validate(&before, &after).unwrap();
         assert!(report.passed); // element count matches (4 elements each)
         assert!(!report.dtype_changes.is_empty());

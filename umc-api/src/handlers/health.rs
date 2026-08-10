@@ -5,10 +5,7 @@ use crate::{errors::ApiError, state::AppState};
 
 pub async fn health(state: web::Data<AppState>) -> Result<HttpResponse, ApiError> {
     // Check DB connectivity
-    let db_ok = sqlx::query("SELECT 1")
-        .fetch_one(&state.db)
-        .await
-        .is_ok();
+    let db_ok = sqlx::query("SELECT 1").fetch_one(&state.db).await.is_ok();
 
     let status = if db_ok { "ok" } else { "degraded" };
 

@@ -129,9 +129,28 @@ fn all_formats() -> Vec<FormatInfo> {
 
 fn build_graph_edges() -> Vec<serde_json::Value> {
     // All native read→write combinations
-    let readers = &["gguf", "safetensors", "onnx", "pytorch", "awq", "gptq", "tflite"];
-    let writers = &["gguf", "safetensors", "onnx", "pytorch", "awq", "gptq", "tflite",
-                    "coreml", "tensorrt", "openvino", "executorch"];
+    let readers = &[
+        "gguf",
+        "safetensors",
+        "onnx",
+        "pytorch",
+        "awq",
+        "gptq",
+        "tflite",
+    ];
+    let writers = &[
+        "gguf",
+        "safetensors",
+        "onnx",
+        "pytorch",
+        "awq",
+        "gptq",
+        "tflite",
+        "coreml",
+        "tensorrt",
+        "openvino",
+        "executorch",
+    ];
 
     let mut edges = vec![];
     for &src in readers {
