@@ -26,7 +26,7 @@ pub async fn upload_file(
     let mut total_size: u64 = 0;
     let mut all_bytes: Vec<u8> = Vec::new();
 
-    while let Some(mut field) = payload.try_next().await.map_err(|e| {
+    if let Some(mut field) = payload.try_next().await.map_err(|e| {
         ApiError::BadRequest(format!("Multipart error: {e}"))
     })? {
         let filename = field
@@ -55,7 +55,6 @@ pub async fn upload_file(
         }
 
         file_path = Some(dest);
-        break; // only first field
     }
 
     let path = file_path.ok_or_else(|| ApiError::BadRequest("No file in upload".into()))?;
