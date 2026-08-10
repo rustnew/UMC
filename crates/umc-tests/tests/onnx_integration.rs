@@ -51,7 +51,7 @@ fn test_onnx_load_f32_tensor() {
 
 #[test]
 fn test_onnx_round_trip_f32() {
-    let original_vals = vec![1.0f32, -1.5, 0.0, 3.14, 2.718, -0.5];
+    let original_vals = vec![1.0f32, -1.5, 0.0, 3.25, 2.5, -0.5];
     let buf = make_onnx_bytes_f32(&[("layer.weight", vec![2, 3], original_vals.clone())]);
     let mut f = tempfile::NamedTempFile::with_suffix(".onnx").unwrap();
     f.write_all(&buf).unwrap(); f.flush().unwrap();
