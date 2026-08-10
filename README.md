@@ -8,11 +8,23 @@
 
 ---
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
+[![CI](https://github.com/rustnew/Universal_Model_Convert/actions/workflows/ci.yml/badge.svg)](https://github.com/rustnew/Universal_Model_Convert/actions)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Rust 1.80](https://img.shields.io/badge/Rust-1.80-000000.svg?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![31 Formats](https://img.shields.io/badge/formats-31-brightgreen.svg)](#formats-supported)
 [![Round-Trip 100%](https://img.shields.io/badge/round--trip-100%25-success.svg)](#guarantees)
-[![Stars](https://img.shields.io/github/stars/umc-dev/umc?style=social)](https://github.com/umc-dev/umc)
+[![Stars](https://img.shields.io/github/stars/rustnew/Universal_Model_Convert?style=social)](https://github.com/rustnew/Universal_Model_Convert)
+
+### Crates.io
+
+[![umc-cli](https://img.shields.io/crates/v/umc-cli?style=flat-square&label=umc-cli)](https://crates.io/crates/umc-cli)
+[![umc-core](https://img.shields.io/crates/v/umc-core?style=flat-square&label=umc-core)](https://crates.io/crates/umc-core)
+[![umc-formats](https://img.shields.io/crates/v/umc-formats?style=flat-square&label=umc-formats)](https://crates.io/crates/umc-formats)
+[![umc-detect](https://img.shields.io/crates/v/umc-detect?style=flat-square&label=umc-detect)](https://crates.io/crates/umc-detect)
+[![umc-graph](https://img.shields.io/crates/v/umc-graph?style=flat-square&label=umc-graph)](https://crates.io/crates/umc-graph)
+[![umc-pipeline](https://img.shields.io/crates/v/umc-pipeline?style=flat-square&label=umc-pipeline)](https://crates.io/crates/umc-pipeline)
+[![umc-validate](https://img.shields.io/crates/v/umc-validate?style=flat-square&label=umc-validate)](https://crates.io/crates/umc-validate)
 
 ```
 135x    1e-5    100%    31
@@ -21,7 +33,7 @@ than    Prec.   Trip    Supported
 Comp.   Toler.  Fideli.
 ```
 
-[**Get Started**](#get-started) · [**Formats**](#formats-supported) · [**Benchmarks**](#benchmarks) · [**API**](#api-reference) · [**Documentation**](https://docs.umc.dev)
+[**Get Started**](#get-started) · [**Formats**](#formats-supported) · [**Benchmarks**](#benchmarks) · [**API**](#api-reference) · [**Documentation**](docs/README.md)
 
 </div>
 
@@ -35,7 +47,7 @@ Today, converting a model between formats requires specialized knowledge, multip
 
 ```bash
 # Before UMC: hours of setup, Python hell, silent quality loss
-$ pip install torch onnx transformers coremltools...  # 2 Go of deps
+$ pip install torch onnx transformers coremltools...  # 2 Go deps
 $ python convert.py --input model.gguf --output model.onnx
 # "Conversion complete" — but did it really work? Who knows.
 
@@ -90,6 +102,72 @@ IR_UMC = ⋃(GGUF, ONNX, SafeTensors, ..., Diffusers)
 
 ∀ A→B→A : result is bit-identical to original A
 ```
+
+### Architecture
+
+```mermaid
+flowchart LR
+    A[User Request] --> B[CLI / API / SDK]
+    B --> C[Orchestration Layer]
+    C --> D[Conversion Core]
+    D --> E[Universal IR]
+    E --> F[Target Format]
+    D --> G[Validator]
+    G --> H[Certificate ed25519]
+```
+
+```mermaid
+flowchart TB
+    subgraph Input["Input Layer"]
+        L1[GGUF Loader]
+        L2[ONNX Loader]
+        L3[SafeTensors Loader]
+        L31[31 Loaders]
+    end
+    subgraph IR["Universal IR"]
+        T[TensorStore]
+        G[GraphStore]
+        Q[QuantStore]
+        A[AdapterStore]
+        E[ExtensionStore]
+        Z[TokenizerStore]
+        P[ProvenanceChain]
+    end
+    subgraph Output["Output Layer"]
+        S1[GGUF Saver]
+        S2[ONNX Saver]
+        S3[CoreML Saver]
+        S31[31 Savers]
+    end
+    Input --> IR --> Output
+    IR --> V[Validator: Struct / Numeric / Func / Cert]
+```
+
+**Key Design Decisions:**
+
+1. **Rust everywhere** — No Python, no GIL, no runtime overhead
+2. **mmap by default** — Never load a model fully in RAM
+3. **3-thread pipeline** — Reader + Transformer + Writer always simultaneous
+4. **Extension Store** — Mathematical guarantee of zero information loss
+5. **Dijkstra routing** — Optimal path found automatically
+6. **Tests before code** — Every feature covered before implementation
+
+---
+
+## Repository Layout
+
+| Directory | Description |
+|-----------|-------------|
+| `crates/umc-core` | Universal IR, TensorStore, GraphStore, ExtensionStore, provenance |
+| `crates/umc-detect` | Format detection & registry |
+| `crates/umc-graph` | Conversion graph + Dijkstra path finding |
+| `crates/umc-pipeline` | Reader/Transformer/Writer pipeline, mmap, parallelism |
+| `crates/umc-validate` | 4-level validation (structural, numeric, functional, certificate) |
+| `crates/umc-formats` | 31 format loaders/savers (GGUF, ONNX, SafeTensors, ...) |
+| `crates/umc-cli` | CLI: `convert`, `inspect`, `dry-run`, `diff`, `doctor`, ... |
+| `crates/umc-tests` | Integration & round-trip test suite |
+| `umc-api` | Production REST API (Actix-Web + SQLx/Postgres) |
+| `umc-frontend` | Web dashboard (TanStack Start + React 19 + Vite) |
 
 ---
 
@@ -304,8 +382,8 @@ umc convert ./llama-405b/ model.gguf
 2. mmap — zero-copy reads, OS manages disk cache
 3. rayon — data-parallel tensor processing
 4. 3-thread pipeline — Reader/Transformer/Writer simultaneous
-4. SIMD — AVX2 (x86) / NEON (ARM) for dtype conversion
-5. Tile parallelism — large tensors split into 64 MB tiles
+5. SIMD — AVX2 (x86) / NEON (ARM) for dtype conversion
+6. Tile parallelism — large tensors split into 64 MB tiles
 
 Result: CPU and disk saturated at 100%
         RAM usage stays constant regardless of model size
@@ -623,52 +701,6 @@ umc convert model.gguf output.myf  # Works immediately!
 
 ---
 
-## Architecture
-
-```
-User request
-     │
-     ▼
-┌──────────────────────────────────────────────────────────────┐
-│                      CLI / API / SDK                          │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-     ┌─────────────────────────▼──────────────────────────┐
-     │              ORCHESTRATION LAYER                     │
-     │  Format Detection  ·  Dijkstra Routing  ·  Jobs     │
-     └─────────────────────────┬──────────────────────────┘
-                               │
-     ┌─────────────────────────▼──────────────────────────┐
-     │              CONVERSION CORE                         │
-     │                                                      │
-     │  ┌──────────┐   ┌──────────────────┐  ┌──────────┐ │
-     │  │  LOADERS │──▶│  UNIVERSAL IR    │──▶│  SAVERS  │ │
-     │  │ 31 fmts  │   │  TensorStore     │  │ 31 fmts  │ │
-     │  │ mmap     │   │  GraphStore      │  │ external │ │
-     │  │ streaming│   │  QuantStore      │  │ validate │ │
-     │  └──────────┘   │  AdapterStore    │  └──────────┘ │
-     │                 │  ExtensionStore  │                │
-     │  ┌──────────┐   │  TokenizerStore  │  ┌──────────┐ │
-     │  │ PIPELINE │   │  ProvenanceChain │  │VALIDATOR │ │
-     │  │ Reader   │   └──────────────────┘  │ Struct.  │ │
-     │  │Transform │                          │ Numeric  │ │
-     │  │ Writer   │                          │ Func.    │ │
-     │  └──────────┘                          │ Cert.    │ │
-     │                                        └──────────┘ │
-     └────────────────────────────────────────────────────┘
-```
-
-**Key Design Decisions:**
-
-1. **Rust everywhere** — No Python, no GIL, no runtime overhead
-2. **mmap by default** — Never load a model fully in RAM
-3. **3-thread pipeline** — Reader + Transformer + Writer always simultaneous
-4. **Extension Store** — Mathematical guarantee of zero information loss
-5. **Dijkstra routing** — Optimal path found automatically
-6. **Tests before code** — Every feature covered before implementation
-
----
-
 ## Business Model
 
 UMC follows an **open core** model. The conversion engine is free forever.
@@ -702,8 +734,8 @@ UMC is open source (Apache 2.0). Contributions welcome!
 
 ```bash
 # Setup development environment
-git clone https://github.com/umc-dev/umc
-cd umc
+git clone https://github.com/rustnew/Universal_Model_Convert
+cd Universal_Model_Convert
 cargo build --all
 
 # Run tests
@@ -726,9 +758,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ## Community
 
 - 💬 [Discord](https://discord.gg/umc) — Chat with the team and community
-- 🐛 [GitHub Issues](https://github.com/umc-dev/umc/issues) — Bug reports
-- 💡 [GitHub Discussions](https://github.com/umc-dev/umc/discussions) — Feature requests
-- 📖 [Documentation](https://docs.umc.dev) — Full docs
+- 🐛 [GitHub Issues](https://github.com/rustnew/Universal_Model_Convert/issues) — Bug reports
+- 💡 [GitHub Discussions](https://github.com/rustnew/Universal_Model_Convert/discussions) — Feature requests
+- 📖 [Documentation](docs/README.md) — Full docs
 - 🐦 [Twitter / X](https://twitter.com/umc_dev) — Announcements
 
 ---
@@ -745,6 +777,6 @@ UMC Core is licensed under [Apache 2.0](LICENSE). Free forever.
 
 *Invisible. Indispensable. Universal.*
 
-[⭐ Star us on GitHub](https://github.com/umc-dev/umc) · [📥 Install Now](https://umc.dev/install) · [📖 Read the Docs](https://docs.umc.dev)
+[⭐ Star us on GitHub](https://github.com/rustnew/Universal_Model_Convert) · [📥 Install Now](https://umc.dev/install) · [📖 Read the Docs](docs/README.md)
 
 </div>
