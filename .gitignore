@@ -27,6 +27,7 @@ Cargo.lock
 .env.local
 *.pem
 *.key
+!*.env.example
 
 # ─── OS ───
 .DS_Store
@@ -43,3 +44,6 @@ node_modules/
 .next/
 out/
 dist/
+
+# ─── Dépôt git imbriqué (backup local) ───
+git/
