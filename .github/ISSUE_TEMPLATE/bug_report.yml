@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a problem to help us improve UMC
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as possible.
+  - type: input
+    id: version
+    attributes:
+      label: UMC version
+      description: Which version are you using? (e.g. 1.0.0)
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did you hit the issue?
+      options:
+        - CLI (umc-cli)
+        - Web UI (umc-frontend)
+        - API (umc-api)
+        - Format loader / saver
+        - Conversion pipeline
+        - Validation / certification
+        - Quantization
+        - Adapters (LoRA / QLoRA / PEFT)
+    validations:
+      required: true
+  - type: input
+    id: formats
+    attributes:
+      label: Source / target formats
+      description: Which formats were involved? (e.g. GGUF → ONNX)
+      placeholder: "GGUF → ONNX"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the exact command(s) used and the model file if relevant.
+      placeholder: |
+        1. Run `umc convert model.gguf model.onnx`
+        2. Open ...
+        3. See error ...
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Rust version, Node version, browser, GPU model, RAM...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / output
+      render: shell

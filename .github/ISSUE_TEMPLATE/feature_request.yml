@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an idea for UMC
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to achieve? Why does this matter?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature and how it should behave.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area does this affect?
+      options:
+        - New format support
+        - CLI
+        - API
+        - Web UI
+        - Pipeline / performance
+        - Validation / certification
+        - Quantization
+        - Documentation
+        - Other
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else have you tried or considered?
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you be willing to help implement it?
+      options:
+        - label: Yes, I can contribute a pull request
