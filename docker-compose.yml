@@ -1,0 +1,82 @@
+# ─── UMC — Docker Compose ──────────────────────────────────────────
+#
+# Usage:
+#   docker compose up              # Start all services
+#   docker compose up api ui       # Start backend + frontend only
+#   docker compose logs -f api     # Follow backend logs
+#
+# Environment:
+#   Copy .env.example files and fill in real values:
+#     cp umc-api/.env.example umc-api/.env
+#     cp umc-frontend/.env.example umc-frontend/.env
+#
+# Ports:
+#   5432 — postgres (database)
+#   8080 — umc-api (Rust backend)
+#   8081 — umc-ui (frontend)
+
+version: "3.9"
+
+services:
+  # ── Database ─────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: umc-db
+    environment:
+      POSTGRES_USER: umc
+      POSTGRES_PASSWORD: umc_password
+      POSTGRES_DB: umc_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - umc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umc -d umc_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Backend API ──────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: umc-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - umc-api/.env
+    environment:
+      - UMC_HOST=0.0.0.0
+      - UMC_PORT=8080
+      - DATABASE_URL=postgres://umc:umc_password@db:5432/umc_db
+      - RUST_LOG=info
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── Frontend ─────────────────────────────────────────────────────
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+      args:
+        VITE_API_URL: http://localhost:8080
+    container_name: umc-ui
+    ports:
+      - "8081:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  umc_pgdata:
