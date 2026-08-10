@@ -1,28 +1,19 @@
+use super::cancel::CancellationToken;
 use std::path::{Path, PathBuf};
 use umc_core::{
-    UmcError, UniversalIR,
-    FormatLoader, FormatSaver,
-    LoadOptions, SaveOptions, ProgressCallback,
+    FormatLoader, FormatSaver, LoadOptions, ProgressCallback, SaveOptions, UmcError, UniversalIR,
 };
 use umc_detect::FormatRegistry;
-use umc_graph::{ConversionGraph, find_path};
-use umc_validate::{
-    structural_validate, numeric_validate,
-    CertificateBuilder, ConversionCertificate,
-    certificate::sha256_file,
-    certificate::CertFileInfo,
-    ValidationMode,
-};
 use umc_formats::{
-    GgufLoader, GgufSaver, SafeTensorsSaver, SafeTensorsLoader, OnnxLoader, OnnxSaver,
-    PyTorchLoader, PyTorchSaver,
-    AwqLoader, AwqSaver,
-    GptqLoader, GptqSaver,
-    TFLiteLoader, TFLiteSaver,
-    CoreMLSaver, TensorRTSaver, OpenVINOSaver, ExecuTorchSaver,
-    LoraLoader,
+    AwqLoader, AwqSaver, CoreMLSaver, ExecuTorchSaver, GgufLoader, GgufSaver, GptqLoader,
+    GptqSaver, LoraLoader, OnnxLoader, OnnxSaver, OpenVINOSaver, PyTorchLoader, PyTorchSaver,
+    SafeTensorsLoader, SafeTensorsSaver, TFLiteLoader, TFLiteSaver, TensorRTSaver,
 };
-use super::cancel::CancellationToken;
+use umc_graph::{find_path, ConversionGraph};
+use umc_validate::{
+    certificate::sha256_file, certificate::CertFileInfo, numeric_validate, structural_validate,
+    CertificateBuilder, ConversionCertificate, ValidationMode,
+};
 
 /// A conversion request.
 #[derive(Debug, Clone)]
@@ -74,7 +65,11 @@ impl ConversionResult {
             self.target_format,
             self.tensor_count,
             self.elapsed_ms as f64 / 1000.0,
-            if self.certificate.is_some() { " | CERTIFIED" } else { "" }
+            if self.certificate.is_some() {
+                " | CERTIFIED"
+            } else {
+                ""
+            }
         )
     }
 }
@@ -109,7 +104,8 @@ impl ConversionPipeline {
             let det = self.detect_registry.detect(&request.input_path)?;
             tracing::info!(
                 "Detected format: {} (confidence {:.2})",
-                det.format, det.confidence
+                det.format,
+                det.confidence
             );
             det.format
         };
@@ -126,7 +122,10 @@ impl ConversionPipeline {
             })?
         };
 
-        progress.report(&format!("Converting {} → {}…", source_format, target_format));
+        progress.report(&format!(
+            "Converting {} → {}…",
+            source_format, target_format
+        ));
 
         if request.cancellation.is_cancelled() {
             return Err(UmcError::Cancelled);
@@ -176,7 +175,8 @@ impl ConversionPipeline {
                 &request.validation_mode,
                 progress,
                 &mut warnings,
-            ).ok()
+            )
+            .ok()
         } else {
             None
         };
@@ -217,7 +217,11 @@ impl ConversionPipeline {
         let struct_report = structural_validate(source_ir, &output_ir)?;
         if !struct_report.passed {
             return Err(UmcError::StructuralValidationFailed {
-                reason: struct_report.shape_mismatches.first().cloned().unwrap_or_default(),
+                reason: struct_report
+                    .shape_mismatches
+                    .first()
+                    .cloned()
+                    .unwrap_or_default(),
             });
         }
         for w in &struct_report.warnings {
@@ -232,7 +236,8 @@ impl ConversionPipeline {
             .roundtrip_level("structural");
 
         // Numeric validation for non-quantized tensors
-        let numeric_report = if *mode == ValidationMode::Numeric || *mode == ValidationMode::Strict {
+        let numeric_report = if *mode == ValidationMode::Numeric || *mode == ValidationMode::Strict
+        {
             let report = numeric_validate(source_ir, &output_ir, None)?;
             if report.passed {
                 Some(report)
@@ -261,8 +266,7 @@ impl ConversionPipeline {
             .source(CertFileInfo {
                 format: source_format.into(),
                 sha256: input_hash,
-                file_size_bytes: std::fs::metadata(input_path)
-                    .map(|m| m.len()).unwrap_or(0),
+                file_size_bytes: std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0),
                 num_tensors: source_ir.tensors.len(),
                 num_parameters: source_ir.num_parameters(),
             })
@@ -278,9 +282,11 @@ impl ConversionPipeline {
             builder = builder.add_warning(w.clone());
         }
 
-        builder.build().ok_or_else(|| UmcError::StructuralValidationFailed {
-            reason: "Certificate could not be issued".into(),
-        })
+        builder
+            .build()
+            .ok_or_else(|| UmcError::StructuralValidationFailed {
+                reason: "Certificate could not be issued".into(),
+            })
     }
 
     fn get_loader(&self, format: &str) -> Result<Box<dyn FormatLoader>, UmcError> {
@@ -322,30 +328,32 @@ impl ConversionPipeline {
 }
 
 impl Default for ConversionPipeline {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn infer_format_from_extension(path: &Path) -> Option<String> {
     match path.extension()?.to_str()? {
-        "gguf"          => Some("GGUF".into()),
-        "safetensors"   => Some("SafeTensors".into()),
-        "onnx"          => Some("ONNX".into()),
-        "pt" | "pth"    => Some("PyTorch".into()),
-        "tflite"        => Some("TFLite".into()),
-        "mlpackage"     => Some("CoreML".into()),
-        "engine"        => Some("TensorRT".into()),
-        "xml"           => Some("OpenVINO".into()),
-        "pte"           => Some("ExecuTorch".into()),
-        "h5" | "keras"  => Some("KerasH5".into()),
-        _               => None,
+        "gguf" => Some("GGUF".into()),
+        "safetensors" => Some("SafeTensors".into()),
+        "onnx" => Some("ONNX".into()),
+        "pt" | "pth" => Some("PyTorch".into()),
+        "tflite" => Some("TFLite".into()),
+        "mlpackage" => Some("CoreML".into()),
+        "engine" => Some("TensorRT".into()),
+        "xml" => Some("OpenVINO".into()),
+        "pte" => Some("ExecuTorch".into()),
+        "h5" | "keras" => Some("KerasH5".into()),
+        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     fn write_minimal_gguf() -> NamedTempFile {
         let mut f = NamedTempFile::with_suffix(".gguf").unwrap();

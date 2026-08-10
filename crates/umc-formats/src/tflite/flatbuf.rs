@@ -7,22 +7,21 @@
 ///   Root table at (root_offset + 0):
 ///     Table layout: soffset_t vtable_offset, then field data
 ///     vtable: vtable_size(u16), object_size(u16), field_offsets[i](u16)
-
 use umc_core::{DType, UmcError};
 
 // ── TFLite TensorType enum ────────────────────────────────────────────────────
 fn tensor_type_to_dtype(t: i32) -> DType {
     match t {
-        0  => DType::F32,
-        1  => DType::F16,
-        2  => DType::I32,
-        3  => DType::U8,
-        4  => DType::I64,
-        6  => DType::Bool,
-        7  => DType::I16,
-        9  => DType::I8,
+        0 => DType::F32,
+        1 => DType::F16,
+        2 => DType::I32,
+        3 => DType::U8,
+        4 => DType::I64,
+        6 => DType::Bool,
+        7 => DType::I16,
+        9 => DType::I8,
         16 => DType::BF16,
-        _  => DType::F32,
+        _ => DType::F32,
     }
 }
 
@@ -33,7 +32,9 @@ pub struct FlatBufReader<'a> {
 }
 
 impl<'a> FlatBufReader<'a> {
-    pub fn new(data: &'a [u8]) -> Self { Self { data } }
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { data }
+    }
 
     fn u8_at(&self, pos: usize) -> Option<u8> {
         self.data.get(pos).copied()
@@ -143,20 +144,24 @@ pub struct TfModel {
 ///   Buffer:   data=0
 pub fn parse_tflite(data: &[u8]) -> Result<TfModel, UmcError> {
     let fb = FlatBufReader::new(data);
-    let model_pos = fb.root()
+    let model_pos = fb
+        .root()
         .ok_or_else(|| UmcError::Other("TFLite: cannot read root offset".into()))?;
 
     // ── Read buffers ────────────────────────────────────────────────────────
     // Model.buffers = field index 4
-    let buffers_field = fb.table_field_offset(model_pos, 4)
+    let buffers_field = fb
+        .table_field_offset(model_pos, 4)
         .ok_or_else(|| UmcError::Other("TFLite: no buffers field".into()))?;
-    let (buffers_vec_start, n_buffers) = fb.read_vector_header(buffers_field)
+    let (buffers_vec_start, n_buffers) = fb
+        .read_vector_header(buffers_field)
         .ok_or_else(|| UmcError::Other("TFLite: cannot read buffers vector".into()))?;
 
     let mut buffers: Vec<Vec<u8>> = Vec::with_capacity(n_buffers);
     for i in 0..n_buffers {
         let buf_offset_pos = buffers_vec_start + i * 4;
-        let buf_table_pos = fb.follow_u32_offset(buf_offset_pos)
+        let buf_table_pos = fb
+            .follow_u32_offset(buf_offset_pos)
             .ok_or_else(|| UmcError::Other(format!("TFLite: buffer[{}] offset invalid", i)))?;
         // Buffer.data = field 0
         let data_vec = if let Some(data_field) = fb.table_field_offset(buf_table_pos, 0) {
@@ -169,9 +174,11 @@ pub fn parse_tflite(data: &[u8]) -> Result<TfModel, UmcError> {
 
     // ── Read subgraphs[0] ────────────────────────────────────────────────────
     // Model.subgraphs = field index 2
-    let subgraphs_field = fb.table_field_offset(model_pos, 2)
+    let subgraphs_field = fb
+        .table_field_offset(model_pos, 2)
         .ok_or_else(|| UmcError::Other("TFLite: no subgraphs field".into()))?;
-    let (subgraphs_vec_start, n_subgraphs) = fb.read_vector_header(subgraphs_field)
+    let (subgraphs_vec_start, n_subgraphs) = fb
+        .read_vector_header(subgraphs_field)
         .ok_or_else(|| UmcError::Other("TFLite: cannot read subgraphs vector".into()))?;
     if n_subgraphs == 0 {
         return Err(UmcError::Other("TFLite: no subgraphs".into()));
@@ -179,13 +186,16 @@ pub fn parse_tflite(data: &[u8]) -> Result<TfModel, UmcError> {
 
     // Use first subgraph
     let sg_offset_pos = subgraphs_vec_start;
-    let sg_table_pos = fb.follow_u32_offset(sg_offset_pos)
+    let sg_table_pos = fb
+        .follow_u32_offset(sg_offset_pos)
         .ok_or_else(|| UmcError::Other("TFLite: cannot read subgraph[0]".into()))?;
 
     // SubGraph.tensors = field 0
-    let tensors_field = fb.table_field_offset(sg_table_pos, 0)
+    let tensors_field = fb
+        .table_field_offset(sg_table_pos, 0)
         .ok_or_else(|| UmcError::Other("TFLite: subgraph has no tensors".into()))?;
-    let (tensors_vec_start, n_tensors) = fb.read_vector_header(tensors_field)
+    let (tensors_vec_start, n_tensors) = fb
+        .read_vector_header(tensors_field)
         .ok_or_else(|| UmcError::Other("TFLite: cannot read tensors vector".into()))?;
 
     let mut tensors: Vec<TfTensor> = Vec::with_capacity(n_tensors);
@@ -197,22 +207,26 @@ pub fn parse_tflite(data: &[u8]) -> Result<TfModel, UmcError> {
         };
 
         // Tensor.shape = field 0
-        let shape = fb.table_field_offset(t_table_pos, 0)
+        let shape = fb
+            .table_field_offset(t_table_pos, 0)
             .and_then(|f| fb.read_i32_vector(f))
             .unwrap_or_default();
 
         // Tensor.type = field 1
-        let dtype_int = fb.table_field_offset(t_table_pos, 1)
+        let dtype_int = fb
+            .table_field_offset(t_table_pos, 1)
             .and_then(|f| fb.i32_at(f))
             .unwrap_or(0);
 
         // Tensor.buffer = field 2
-        let buffer_idx = fb.table_field_offset(t_table_pos, 2)
+        let buffer_idx = fb
+            .table_field_offset(t_table_pos, 2)
             .and_then(|f| fb.u32_at(f))
             .unwrap_or(0) as usize;
 
         // Tensor.name = field 3
-        let name = fb.table_field_offset(t_table_pos, 3)
+        let name = fb
+            .table_field_offset(t_table_pos, 3)
             .and_then(|f| fb.read_string(f))
             .unwrap_or_else(|| format!("tensor_{}", i));
 

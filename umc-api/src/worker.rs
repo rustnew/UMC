@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use umc_core::ProgressCallback;
@@ -12,20 +12,21 @@ use crate::{models::ProgressEvent, state::AppState};
 /// Map lowercase API slug → uppercase pipeline format name.
 fn slug_to_format(slug: &str) -> String {
     match slug {
-        "gguf"          => "GGUF",
-        "safetensors"   => "SafeTensors",
-        "onnx"          => "ONNX",
-        "pytorch"       => "PyTorch",
-        "awq"           => "AWQ",
-        "gptq"          => "GPTQ",
-        "tflite"        => "TFLite",
-        "coreml"        => "CoreML",
-        "tensorrt"      => "TensorRT",
-        "openvino"      => "OpenVINO",
-        "executorch"    => "ExecuTorch",
-        "lora"          => "LoRA",
-        other           => other, // pass through if already uppercase
-    }.to_string()
+        "gguf" => "GGUF",
+        "safetensors" => "SafeTensors",
+        "onnx" => "ONNX",
+        "pytorch" => "PyTorch",
+        "awq" => "AWQ",
+        "gptq" => "GPTQ",
+        "tflite" => "TFLite",
+        "coreml" => "CoreML",
+        "tensorrt" => "TensorRT",
+        "openvino" => "OpenVINO",
+        "executorch" => "ExecuTorch",
+        "lora" => "LoRA",
+        other => other, // pass through if already uppercase
+    }
+    .to_string()
 }
 
 /// Spawns a Tokio task to run the UMC conversion pipeline for the given job.
@@ -42,20 +43,26 @@ async fn run_conversion(state: AppState, job_id: Uuid) -> anyhow::Result<()> {
     let _permit = state.conversion_semaphore.acquire().await?;
 
     // Mark running
-    sqlx::query(
-        "UPDATE conversion_jobs SET status='running', started_at=NOW() WHERE id=$1"
-    )
-    .bind(job_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE conversion_jobs SET status='running', started_at=NOW() WHERE id=$1")
+        .bind(job_id)
+        .execute(&state.db)
+        .await?;
 
-    emit_progress(&state, job_id, "running", 0.0, 0, None, Some("Starting conversion".into()));
+    emit_progress(
+        &state,
+        job_id,
+        "running",
+        0.0,
+        0,
+        None,
+        Some("Starting conversion".into()),
+    );
 
     // Fetch job details
     let row = sqlx::query(
         "SELECT source_format, target_format, validate_mode, generate_cert,
                 source_file_path, output_file_path
-         FROM conversion_jobs WHERE id=$1"
+         FROM conversion_jobs WHERE id=$1",
     )
     .bind(job_id)
     .fetch_one(&state.db)
@@ -70,12 +77,8 @@ async fn run_conversion(state: AppState, job_id: Uuid) -> anyhow::Result<()> {
     let source_format = slug_to_format(&source_slug);
     let target_format = slug_to_format(&target_slug);
 
-    let input_path = PathBuf::from(source_file.ok_or_else(|| {
-        anyhow::anyhow!("No source file")
-    })?);
-    let output_path = PathBuf::from(output_file.ok_or_else(|| {
-        anyhow::anyhow!("No output path")
-    })?);
+    let input_path = PathBuf::from(source_file.ok_or_else(|| anyhow::anyhow!("No source file"))?);
+    let output_path = PathBuf::from(output_file.ok_or_else(|| anyhow::anyhow!("No output path"))?);
 
     let validation_mode = match validate_mode_str.as_str() {
         "strict" | "numeric" => ValidationMode::Numeric,
@@ -90,9 +93,17 @@ async fn run_conversion(state: AppState, job_id: Uuid) -> anyhow::Result<()> {
 
     let progress_cb = ProgressCallback::with_handler(move |done, total, msg| {
         let _ = tdc.fetch_add(0, Ordering::Relaxed); // keep compiler happy
-        let pct = if total > 0 { done as f32 / total as f32 * 0.95 } else { 0.0 };
+        let pct = if total > 0 {
+            done as f32 / total as f32 * 0.95
+        } else {
+            0.0
+        };
         emit_progress_sync(
-            &state_clone, job_id, "running", pct, done as i64,
+            &state_clone,
+            job_id,
+            "running",
+            pct,
+            done as i64,
             if total > 0 { Some(total as i64) } else { None },
             Some(msg.to_string()),
         );
@@ -134,7 +145,7 @@ async fn run_conversion(state: AppState, job_id: Uuid) -> anyhow::Result<()> {
                     output_file_size=$3,
                     warnings=$4,
                     finished_at=NOW()
-                 WHERE id=$1"
+                 WHERE id=$1",
             )
             .bind(job_id)
             .bind(conversion_result.tensor_count as i64)
@@ -144,7 +155,10 @@ async fn run_conversion(state: AppState, job_id: Uuid) -> anyhow::Result<()> {
             .await?;
 
             emit_progress(
-                &state, job_id, "done", 1.0,
+                &state,
+                job_id,
+                "done",
+                1.0,
                 conversion_result.tensor_count as i64,
                 None,
                 Some(format!(
@@ -208,5 +222,13 @@ fn emit_progress_sync(
     tensors_total: Option<i64>,
     message: Option<String>,
 ) {
-    emit_progress(state, job_id, status, progress, tensors_done, tensors_total, message);
+    emit_progress(
+        state,
+        job_id,
+        status,
+        progress,
+        tensors_done,
+        tensors_total,
+        message,
+    );
 }

@@ -8,15 +8,19 @@
 #[inline]
 fn f16_to_f32(h: u16) -> f32 {
     // IEEE 754 half-precision to single-precision.
-    let sign    = ((h as u32 & 0x8000) << 16) as u32;
-    let exp     = (h as u32 & 0x7C00) >> 10;
-    let frac    = (h as u32 & 0x03FF) as u32;
+    let sign = ((h as u32 & 0x8000) << 16) as u32;
+    let exp = (h as u32 & 0x7C00) >> 10;
+    let frac = (h as u32 & 0x03FF) as u32;
     let bits: u32 = if exp == 0 {
-        if frac == 0 { sign }
-        else {
+        if frac == 0 {
+            sign
+        } else {
             let mut e = 127 - 14;
             let mut f = frac;
-            while f & 0x0400 == 0 { f <<= 1; e -= 1; }
+            while f & 0x0400 == 0 {
+                f <<= 1;
+                e -= 1;
+            }
             sign | ((e as u32) << 23) | ((f & 0x03FF) << 13)
         }
     } else if exp == 0x1F {
@@ -37,7 +41,7 @@ fn get_scale_min_k4(j: usize, q: &[u8]) -> (u8, u8) {
     } else {
         (
             (q[j + 4] & 0x0F) | ((q[j - 4] >> 6) << 4),
-            (q[j + 4] >> 4)   | ((q[j - 0] >> 6) << 4),
+            (q[j + 4] >> 4) | ((q[j - 0] >> 6) << 4),
         )
     }
 }
@@ -56,8 +60,8 @@ pub fn dequantize_q2_k(data: &[u8], n_elements: usize) -> Vec<f32> {
     for b in 0..n_blocks {
         let block = &data[b * Q2_K_BLOCK_BYTES..];
         let scales_raw = &block[0..16];
-        let qs_raw     = &block[16..80];
-        let d    = f16_to_f32(u16::from_le_bytes([block[80], block[81]]));
+        let qs_raw = &block[16..80];
+        let d = f16_to_f32(u16::from_le_bytes([block[80], block[81]]));
         let dmin = f16_to_f32(u16::from_le_bytes([block[82], block[83]]));
 
         let dst = &mut out[b * Q2_K_BLOCK_SIZE..];
@@ -65,8 +69,8 @@ pub fn dequantize_q2_k(data: &[u8], n_elements: usize) -> Vec<f32> {
         let mut qs_off = 0usize;
 
         for _ in 0..16 {
-            let scale = d    * (scales_raw[is] & 0xF) as f32;
-            let min   = dmin * (scales_raw[is] >> 4) as f32;
+            let scale = d * (scales_raw[is] & 0xF) as f32;
+            let min = dmin * (scales_raw[is] >> 4) as f32;
             is += 1;
 
             for j in 0..16 {
@@ -100,21 +104,21 @@ pub fn dequantize_q3_k(data: &[u8], n_elements: usize) -> Vec<f32> {
     const KMASK2: u32 = 0x0f0f0f0f;
 
     for b in 0..n_blocks {
-        let block  = &data[b * Q3_K_BLOCK_BYTES..];
-        let hmask  = &block[0..32];  // 32 bytes: 1 high bit per element
-        let qs     = &block[32..96]; // 64 bytes: 2 low bits per element
-        let scdata = &block[96..108];// 12 bytes: packed 6-bit scales
-        let d_all  = f16_to_f32(u16::from_le_bytes([block[108], block[109]]));
+        let block = &data[b * Q3_K_BLOCK_BYTES..];
+        let hmask = &block[0..32]; // 32 bytes: 1 high bit per element
+        let qs = &block[32..96]; // 64 bytes: 2 low bits per element
+        let scdata = &block[96..108]; // 12 bytes: packed 6-bit scales
+        let d_all = f16_to_f32(u16::from_le_bytes([block[108], block[109]]));
 
         // Decode 12-byte packed scales identical to llama.cpp kmask manipulation.
-        let s0  = u32::from_le_bytes(scdata[0..4].try_into().unwrap_or([0; 4]));
-        let s1  = u32::from_le_bytes(scdata[4..8].try_into().unwrap_or([0; 4]));
+        let s0 = u32::from_le_bytes(scdata[0..4].try_into().unwrap_or([0; 4]));
+        let s1 = u32::from_le_bytes(scdata[4..8].try_into().unwrap_or([0; 4]));
         let tmp = u32::from_le_bytes(scdata[8..12].try_into().unwrap_or([0; 4]));
         let mut aux = [0u32; 4];
         aux[2] = ((s0 >> 4) & KMASK2) | (((tmp >> 4) & KMASK1) << 6);
         aux[3] = ((s1 >> 4) & KMASK2) | (((tmp >> 6) & KMASK1) << 6);
-        aux[0] = ( s0       & KMASK2) | (((tmp >> 0) & KMASK1) << 6);
-        aux[1] = ( s1       & KMASK2) | (((tmp >> 2) & KMASK1) << 6);
+        aux[0] = (s0 & KMASK2) | (((tmp >> 0) & KMASK1) << 6);
+        aux[1] = (s1 & KMASK2) | (((tmp >> 2) & KMASK1) << 6);
 
         let dst = &mut out[b * Q3_K_BLOCK_SIZE..];
 
@@ -148,8 +152,8 @@ pub fn dequantize_q4_k(data: &[u8], n_elements: usize) -> Vec<f32> {
     let mut out = vec![0f32; n_blocks * Q4_K_BLOCK_SIZE];
 
     for b in 0..n_blocks {
-        let block  = &data[b * Q4_K_BLOCK_BYTES..];
-        let d    = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
+        let block = &data[b * Q4_K_BLOCK_BYTES..];
+        let d = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
         let dmin = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
         let scales = &block[4..16];
         let qs_raw = &block[16..144];
@@ -159,13 +163,13 @@ pub fn dequantize_q4_k(data: &[u8], n_elements: usize) -> Vec<f32> {
 
         for group in 0..8 {
             let (sc, mn) = get_scale_min_k4(group, scales);
-            let scale = d    * sc as f32;
-            let min   = dmin * mn as f32;
+            let scale = d * sc as f32;
+            let min = dmin * mn as f32;
 
             for j in 0..16 {
                 let byte = qs_raw[qs_off + j];
-                dst[group * 32 + j]      = scale * (byte & 0x0F) as f32 - min;
-                dst[group * 32 + j + 16] = scale * (byte >> 4)  as f32 - min;
+                dst[group * 32 + j] = scale * (byte & 0x0F) as f32 - min;
+                dst[group * 32 + j + 16] = scale * (byte >> 4) as f32 - min;
             }
             qs_off += 16;
         }
@@ -185,8 +189,8 @@ pub fn dequantize_q5_k(data: &[u8], n_elements: usize) -> Vec<f32> {
     let mut out = vec![0f32; n_blocks * Q5_K_BLOCK_SIZE];
 
     for b in 0..n_blocks {
-        let block  = &data[b * Q5_K_BLOCK_BYTES..];
-        let d    = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
+        let block = &data[b * Q5_K_BLOCK_BYTES..];
+        let d = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
         let dmin = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
         let scales = &block[4..16];
         let qh_raw = &block[16..48];
@@ -199,21 +203,21 @@ pub fn dequantize_q5_k(data: &[u8], n_elements: usize) -> Vec<f32> {
 
         for group in 0..8 {
             let (sc, mn) = get_scale_min_k4(group, scales);
-            let scale = d    * sc as f32;
-            let min   = dmin * mn as f32;
+            let scale = d * sc as f32;
+            let min = dmin * mn as f32;
 
             for j in 0..16 {
                 let lo_lo = qs_raw[qs_off + j] & 0x0F;
                 let lo_hi = qs_raw[qs_off + j] >> 4;
                 let hi_lo = (qh_raw[qh_off + j / 8] >> (hshift + (j % 8) as u32)) & 1;
                 let hi_hi = (qh_raw[qh_off + (j + 16) / 8] >> (hshift + ((j + 16) % 8) as u32)) & 1;
-                dst[group * 32 + j]      = scale * (lo_lo | (hi_lo << 4)) as f32 - min;
+                dst[group * 32 + j] = scale * (lo_lo | (hi_lo << 4)) as f32 - min;
                 dst[group * 32 + j + 16] = scale * (lo_hi | (hi_hi << 4)) as f32 - min;
             }
             qs_off += 16;
             if (group & 3) == 3 {
                 qh_off += 4;
-                hshift  = 0;
+                hshift = 0;
             } else {
                 hshift += 1;
             }
@@ -234,17 +238,17 @@ pub fn dequantize_q6_k(data: &[u8], n_elements: usize) -> Vec<f32> {
     let mut out = vec![0f32; n_blocks * Q6_K_BLOCK_SIZE];
 
     for b in 0..n_blocks {
-        let block  = &data[b * Q6_K_BLOCK_BYTES..];
-        let ql_raw  = &block[0..128];
-        let qh_raw  = &block[128..192];
-        let sc_raw  = &block[192..208];
+        let block = &data[b * Q6_K_BLOCK_BYTES..];
+        let ql_raw = &block[0..128];
+        let qh_raw = &block[128..192];
+        let sc_raw = &block[192..208];
         let d = f16_to_f32(u16::from_le_bytes([block[208], block[209]]));
 
         let dst = &mut out[b * Q6_K_BLOCK_SIZE..];
 
         for group in 0..16 {
             let scale = d * (sc_raw[group] as i8) as f32;
-            let base  = group * 16;
+            let base = group * 16;
             let ql_off = group * 8;
             let qh_off = (group / 2) * 8;
             let hshift = (group % 2) * 4;
@@ -253,9 +257,9 @@ pub fn dequantize_q6_k(data: &[u8], n_elements: usize) -> Vec<f32> {
                 let ql0 = ql_raw[ql_off + j] & 0x0F;
                 let ql1 = ql_raw[ql_off + j] >> 4;
                 let qh0 = (qh_raw[qh_off + j] >> hshift) & 0x0F;
-                let q0  = (ql0 | ((qh0 & 3) << 4)) as i32 - 32;
-                let q1  = (ql1 | (((qh0 >> 2) & 3) << 4)) as i32 - 32;
-                dst[base + j]     = scale * q0 as f32;
+                let q0 = (ql0 | ((qh0 & 3) << 4)) as i32 - 32;
+                let q1 = (ql1 | (((qh0 >> 2) & 3) << 4)) as i32 - 32;
+                dst[base + j] = scale * q0 as f32;
                 dst[base + j + 8] = scale * q1 as f32;
             }
         }
@@ -276,8 +280,8 @@ pub fn dequantize_q8_k(data: &[u8], n_elements: usize) -> Vec<f32> {
 
     for b in 0..n_blocks {
         let block = &data[b * Q8_K_BLOCK_BYTES..];
-        let d     = f64::from_le_bytes(block[0..8].try_into().unwrap_or([0; 8])) as f32;
-        let qs    = &block[8..264];
+        let d = f64::from_le_bytes(block[0..8].try_into().unwrap_or([0; 8])) as f32;
+        let qs = &block[8..264];
 
         let dst = &mut out[b * Q8_K_BLOCK_SIZE..];
         for i in 0..Q8_K_BLOCK_SIZE {
@@ -304,15 +308,21 @@ pub fn dequantize_any_to_f32_bytes(
             let (block_size, bpb) = (32usize, 18usize);
             let mut out = vec![0f32; n_elements];
             for (bi, block) in data.chunks(bpb).enumerate() {
-                if block.len() < bpb { break; }
+                if block.len() < bpb {
+                    break;
+                }
                 let scale = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
                 for (i, &byte) in block[2..18].iter().enumerate() {
                     let lo = (byte & 0x0F) as i32 - 8;
                     let hi = ((byte >> 4) & 0x0F) as i32 - 8;
                     let i0 = bi * block_size + i * 2;
                     let i1 = i0 + 1;
-                    if i0 < n_elements { out[i0] = lo as f32 * scale; }
-                    if i1 < n_elements { out[i1] = hi as f32 * scale; }
+                    if i0 < n_elements {
+                        out[i0] = lo as f32 * scale;
+                    }
+                    if i1 < n_elements {
+                        out[i1] = hi as f32 * scale;
+                    }
                 }
             }
             Ok(out.iter().flat_map(|f| f.to_le_bytes()).collect())
@@ -321,16 +331,22 @@ pub fn dequantize_any_to_f32_bytes(
             let (block_size, bpb) = (32usize, 20usize);
             let mut out = vec![0f32; n_elements];
             for (bi, block) in data.chunks(bpb).enumerate() {
-                if block.len() < bpb { break; }
+                if block.len() < bpb {
+                    break;
+                }
                 let scale = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
-                let min   = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
+                let min = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
                 for (i, &byte) in block[4..20].iter().enumerate() {
                     let lo = (byte & 0x0F) as f32;
                     let hi = ((byte >> 4) & 0x0F) as f32;
                     let i0 = bi * block_size + i * 2;
                     let i1 = i0 + 1;
-                    if i0 < n_elements { out[i0] = lo * scale + min; }
-                    if i1 < n_elements { out[i1] = hi * scale + min; }
+                    if i0 < n_elements {
+                        out[i0] = lo * scale + min;
+                    }
+                    if i1 < n_elements {
+                        out[i1] = hi * scale + min;
+                    }
                 }
             }
             Ok(out.iter().flat_map(|f| f.to_le_bytes()).collect())
@@ -339,16 +355,23 @@ pub fn dequantize_any_to_f32_bytes(
             let (block_size, bpb) = (32usize, 22usize);
             let mut out = vec![0f32; n_elements];
             for (bi, block) in data.chunks(bpb).enumerate() {
-                if block.len() < bpb { break; }
+                if block.len() < bpb {
+                    break;
+                }
                 let scale = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
                 let qh = u32::from_le_bytes([block[2], block[3], block[4], block[5]]);
                 for (i, &byte) in block[6..22].iter().enumerate() {
                     let lo = (byte & 0x0F) as i32 + (((qh >> (i * 2)) & 1) << 4) as i32 - 16;
-                    let hi = ((byte >> 4) & 0x0F) as i32 + (((qh >> (i * 2 + 1)) & 1) << 4) as i32 - 16;
+                    let hi =
+                        ((byte >> 4) & 0x0F) as i32 + (((qh >> (i * 2 + 1)) & 1) << 4) as i32 - 16;
                     let i0 = bi * block_size + i * 2;
                     let i1 = i0 + 1;
-                    if i0 < n_elements { out[i0] = lo as f32 * scale; }
-                    if i1 < n_elements { out[i1] = hi as f32 * scale; }
+                    if i0 < n_elements {
+                        out[i0] = lo as f32 * scale;
+                    }
+                    if i1 < n_elements {
+                        out[i1] = hi as f32 * scale;
+                    }
                 }
             }
             Ok(out.iter().flat_map(|f| f.to_le_bytes()).collect())
@@ -357,17 +380,23 @@ pub fn dequantize_any_to_f32_bytes(
             let (block_size, bpb) = (32usize, 24usize);
             let mut out = vec![0f32; n_elements];
             for (bi, block) in data.chunks(bpb).enumerate() {
-                if block.len() < bpb { break; }
+                if block.len() < bpb {
+                    break;
+                }
                 let scale = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
-                let min   = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
+                let min = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
                 let qh = u32::from_le_bytes([block[4], block[5], block[6], block[7]]);
                 for (i, &byte) in block[8..24].iter().enumerate() {
                     let lo = ((byte & 0x0F) + (((qh >> (i * 2)) & 1) << 4) as u8) as f32;
                     let hi = (((byte >> 4) & 0x0F) + (((qh >> (i * 2 + 1)) & 1) << 4) as u8) as f32;
                     let i0 = bi * block_size + i * 2;
                     let i1 = i0 + 1;
-                    if i0 < n_elements { out[i0] = lo * scale + min; }
-                    if i1 < n_elements { out[i1] = hi * scale + min; }
+                    if i0 < n_elements {
+                        out[i0] = lo * scale + min;
+                    }
+                    if i1 < n_elements {
+                        out[i1] = hi * scale + min;
+                    }
                 }
             }
             Ok(out.iter().flat_map(|f| f.to_le_bytes()).collect())
@@ -376,11 +405,15 @@ pub fn dequantize_any_to_f32_bytes(
             let (block_size, bpb) = (32usize, 34usize);
             let mut out = vec![0f32; n_elements];
             for (bi, block) in data.chunks(bpb).enumerate() {
-                if block.len() < bpb { break; }
+                if block.len() < bpb {
+                    break;
+                }
                 let scale = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
                 for (i, &byte) in block[2..34].iter().enumerate() {
                     let idx = bi * block_size + i;
-                    if idx < n_elements { out[idx] = (byte as i8) as f32 * scale; }
+                    if idx < n_elements {
+                        out[idx] = (byte as i8) as f32 * scale;
+                    }
                 }
             }
             Ok(out.iter().flat_map(|f| f.to_le_bytes()).collect())
@@ -397,15 +430,18 @@ pub fn kquant_to_f32_bytes(
     n_elements: usize,
 ) -> Result<Vec<u8>, UmcError> {
     let floats: Vec<f32> = match dtype {
-        DType::Q2K                         => dequantize_q2_k(data, n_elements),
+        DType::Q2K => dequantize_q2_k(data, n_elements),
         DType::Q3KS | DType::Q3KM | DType::Q3KL => dequantize_q3_k(data, n_elements),
-        DType::Q4KS | DType::Q4KM             => dequantize_q4_k(data, n_elements),
-        DType::Q5KS | DType::Q5KM             => dequantize_q5_k(data, n_elements),
-        DType::Q6K                            => dequantize_q6_k(data, n_elements),
-        DType::Q8K                            => dequantize_q8_k(data, n_elements),
-        _ => return Err(UmcError::Other(
-            format!("kquant_to_f32: {:?} is not a supported K-quant type", dtype),
-        )),
+        DType::Q4KS | DType::Q4KM => dequantize_q4_k(data, n_elements),
+        DType::Q5KS | DType::Q5KM => dequantize_q5_k(data, n_elements),
+        DType::Q6K => dequantize_q6_k(data, n_elements),
+        DType::Q8K => dequantize_q8_k(data, n_elements),
+        _ => {
+            return Err(UmcError::Other(format!(
+                "kquant_to_f32: {:?} is not a supported K-quant type",
+                dtype
+            )))
+        }
     };
     Ok(floats.iter().flat_map(|f| f.to_le_bytes()).collect())
 }
@@ -427,13 +463,21 @@ mod tests {
         //   scales[4..7]=0  → mn=0 for groups 0-3
         //   scales[8..11]=1 → groups 4-7 sc = (1&0xF)|(0) = 1
         let mut block = vec![0u8; Q4_K_BLOCK_BYTES];
-        block[0] = 0x00; block[1] = 0x3C; // d  = 1.0 f16 LE
-        block[2] = 0x00; block[3] = 0x00; // dmin = 0.0
-        // scales[0..3]: sc for groups 0-3
-        block[4] = 1; block[5] = 1; block[6] = 1; block[7] = 1;
+        block[0] = 0x00;
+        block[1] = 0x3C; // d  = 1.0 f16 LE
+        block[2] = 0x00;
+        block[3] = 0x00; // dmin = 0.0
+                         // scales[0..3]: sc for groups 0-3
+        block[4] = 1;
+        block[5] = 1;
+        block[6] = 1;
+        block[7] = 1;
         // scales[4..7]: mn for groups 0-3 (0 = already zero)
         // scales[8..11]: sc for groups 4-7
-        block[12] = 1; block[13] = 1; block[14] = 1; block[15] = 1;
+        block[12] = 1;
+        block[13] = 1;
+        block[14] = 1;
+        block[15] = 1;
         block
     }
 
@@ -452,7 +496,9 @@ mod tests {
     fn test_q4_k_max_quants() {
         let mut block = make_q4_k_block_zeros();
         // Set all qs = 0xFF → lo nibble=15, hi nibble=15
-        for i in 16..144 { block[i] = 0xFF; }
+        for i in 16..144 {
+            block[i] = 0xFF;
+        }
         // d=1.0, scale[0]=1 → value = 1.0 * 15 - 0 = 15.0
         let floats = dequantize_q4_k(&block, Q4_K_BLOCK_SIZE);
         for &v in &floats {
@@ -467,7 +513,9 @@ mod tests {
         let floats = dequantize_q6_k(&block, Q6_K_BLOCK_SIZE);
         assert_eq!(floats.len(), Q6_K_BLOCK_SIZE);
         // d=0.0 → all zeros
-        for &v in &floats { assert_eq!(v, 0.0); }
+        for &v in &floats {
+            assert_eq!(v, 0.0);
+        }
     }
 
     #[test]
@@ -483,7 +531,13 @@ mod tests {
         let floats = dequantize_q8_k(&block, Q8_K_BLOCK_SIZE);
         for (i, &v) in floats.iter().enumerate() {
             let expected = (i as i8) as f32;
-            assert!((v - expected).abs() < 1e-6, "i={} expected {} got {}", i, expected, v);
+            assert!(
+                (v - expected).abs() < 1e-6,
+                "i={} expected {} got {}",
+                i,
+                expected,
+                v
+            );
         }
     }
 
@@ -491,6 +545,8 @@ mod tests {
     fn test_q2_k_zero_d() {
         let block = vec![0u8; Q2_K_BLOCK_BYTES];
         let floats = dequantize_q2_k(&block, Q2_K_BLOCK_SIZE);
-        for &v in &floats { assert_eq!(v, 0.0); }
+        for &v in &floats {
+            assert_eq!(v, 0.0);
+        }
     }
 }

@@ -28,7 +28,10 @@ fn parse_key(key: &str) -> Result<ExtensionKeyParts, UmcError> {
             reason: "'/' must come after '@'".into(),
         });
     }
-    if !key.chars().all(|c| c.is_alphanumeric() || "@/._-".contains(c)) {
+    if !key
+        .chars()
+        .all(|c| c.is_alphanumeric() || "@/._-".contains(c))
+    {
         return Err(UmcError::InvalidExtensionKey {
             key: key.to_string(),
             reason: "Only alphanumeric and @/._- characters are allowed".into(),
@@ -67,7 +70,7 @@ pub struct ExtensionStore {
 
 impl Default for ExtensionStore {
     fn default() -> Self {
-        Self::new(100 * 1024 * 1024)  // 100 MiB
+        Self::new(100 * 1024 * 1024) // 100 MiB
     }
 }
 
@@ -96,8 +99,13 @@ impl ExtensionStore {
             .entry(parts.format_name)
             .or_insert_with(FormatExtension::default);
         // Subtract old value size if key already exists
-        self.total_bytes = self.total_bytes
-            .saturating_sub(ext.custom_fields.get(&parts.field_path).map_or(0, |v| v.len()))
+        self.total_bytes = self
+            .total_bytes
+            .saturating_sub(
+                ext.custom_fields
+                    .get(&parts.field_path)
+                    .map_or(0, |v| v.len()),
+            )
             .saturating_add(value.len());
         ext.custom_fields.insert(parts.field_path, value);
         Ok(())

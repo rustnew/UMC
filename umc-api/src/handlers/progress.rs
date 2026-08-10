@@ -28,18 +28,17 @@ pub async fn job_progress_sse(
     }
 
     let rx = state.progress_tx.subscribe();
-    let stream = BroadcastStream::new(rx)
-        .filter_map(move |res| {
-            let ev = res.ok()?;
-            if ev.job_id == job_id {
-                let data = serde_json::to_string(&ev).ok()?;
-                Some(Ok::<_, actix_web::Error>(
-                    actix_web::web::Bytes::from(format!("data: {data}\n\n"))
-                ))
-            } else {
-                None
-            }
-        });
+    let stream = BroadcastStream::new(rx).filter_map(move |res| {
+        let ev = res.ok()?;
+        if ev.job_id == job_id {
+            let data = serde_json::to_string(&ev).ok()?;
+            Some(Ok::<_, actix_web::Error>(actix_web::web::Bytes::from(
+                format!("data: {data}\n\n"),
+            )))
+        } else {
+            None
+        }
+    });
 
     Ok(HttpResponse::Ok()
         .content_type("text/event-stream")

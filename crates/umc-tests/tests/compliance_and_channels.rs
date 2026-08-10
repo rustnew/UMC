@@ -14,21 +14,17 @@
 /// Then exercises all native conversion channels on a synthetic GGUF model.
 /// Real phi-2.Q4_K_M.gguf tests are marked #[ignore] (slow, need real file).
 /// ============================================================================
-
 use std::io::Write;
 use tempfile::NamedTempFile;
 use umc_core::{
-    UniversalIR,
-    FormatLoader, FormatSaver, LoadOptions, SaveOptions, ProgressCallback,
-    ir::extension::ExtensionStore,
+    ir::extension::ExtensionStore, FormatLoader, FormatSaver, LoadOptions, ProgressCallback,
+    SaveOptions, UniversalIR,
 };
 use umc_formats::{
-    GgufLoader, GgufSaver,
-    SafeTensorsLoader, SafeTensorsSaver,
-    OnnxLoader, OnnxSaver,
-    PyTorchLoader, PyTorchSaver,
+    GgufLoader, GgufSaver, OnnxLoader, OnnxSaver, PyTorchLoader, PyTorchSaver, SafeTensorsLoader,
+    SafeTensorsSaver,
 };
-use umc_graph::{ConversionGraph, find_path};
+use umc_graph::{find_path, ConversionGraph};
 use umc_validate::structural_validate;
 
 // ── GGUF fixture builder ──────────────────────────────────────────────────────
@@ -58,10 +54,13 @@ fn build_synthetic_gguf(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> NamedTempFi
 
     // Tensor infos (offset = cumulative, 32-byte aligned within data segment)
     let mut cumulative_offset: u64 = 0;
-    let data_sizes: Vec<u64> = tensors.iter().map(|(_, shape, _)| {
-        let n: usize = shape.iter().product();
-        n as u64 * 4 // F32 = 4 bytes each
-    }).collect();
+    let data_sizes: Vec<u64> = tensors
+        .iter()
+        .map(|(_, shape, _)| {
+            let n: usize = shape.iter().product();
+            n as u64 * 4 // F32 = 4 bytes each
+        })
+        .collect();
 
     for (idx, (name, shape, _)) in tensors.iter().enumerate() {
         let nbytes = name.as_bytes();
@@ -69,7 +68,8 @@ fn build_synthetic_gguf(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> NamedTempFi
         f.write_all(nbytes).unwrap();
         let n_dims = shape.len() as u32;
         f.write_all(&n_dims.to_le_bytes()).unwrap();
-        for &dim in shape.iter().rev() { // GGUF: innermost first
+        for &dim in shape.iter().rev() {
+            // GGUF: innermost first
             f.write_all(&(dim as u64).to_le_bytes()).unwrap();
         }
         f.write_all(&0u32.to_le_bytes()).unwrap(); // F32 = ggml_type 0
@@ -82,7 +82,8 @@ fn build_synthetic_gguf(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> NamedTempFi
     // Alignment pad after header
     let header_end = f.as_file().metadata().unwrap().len() as usize;
     let aligned_header = (header_end + 31) / 32 * 32;
-    f.write_all(&vec![0u8; aligned_header - header_end]).unwrap();
+    f.write_all(&vec![0u8; aligned_header - header_end])
+        .unwrap();
 
     // Tensor data (each padded to 32-byte boundary)
     for (_, _, values) in tensors.iter() {
@@ -110,23 +111,47 @@ fn write_gguf_str_kv(f: &mut NamedTempFile, key: &str, value: &str) {
 
 fn make_test_tensors() -> Vec<(&'static str, Vec<usize>, Vec<f32>)> {
     vec![
-        ("model.embed_tokens.weight", vec![4, 8],  (0..32).map(|i| i as f32 * 0.01).collect()),
-        ("model.layers.0.attn.weight", vec![8, 8], (0..64).map(|i| (i as f32 - 32.0) * 0.001).collect()),
-        ("model.layers.0.mlp.weight",  vec![8, 4], (0..32).map(|i| i as f32 * 0.02 - 0.3).collect()),
-        ("lm_head.weight",             vec![4, 8], (0..32).map(|i| -(i as f32) * 0.001).collect()),
+        (
+            "model.embed_tokens.weight",
+            vec![4, 8],
+            (0..32).map(|i| i as f32 * 0.01).collect(),
+        ),
+        (
+            "model.layers.0.attn.weight",
+            vec![8, 8],
+            (0..64).map(|i| (i as f32 - 32.0) * 0.001).collect(),
+        ),
+        (
+            "model.layers.0.mlp.weight",
+            vec![8, 4],
+            (0..32).map(|i| i as f32 * 0.02 - 0.3).collect(),
+        ),
+        (
+            "lm_head.weight",
+            vec![4, 8],
+            (0..32).map(|i| -(i as f32) * 0.001).collect(),
+        ),
     ]
 }
 
 fn load_f32s(ir: &UniversalIR, name: &str) -> Vec<f32> {
-    let t = ir.tensors.get(name).unwrap_or_else(|| panic!("tensor '{}' not found", name));
-    t.data.as_bytes().unwrap()
+    let t = ir
+        .tensors
+        .get(name)
+        .unwrap_or_else(|| panic!("tensor '{}' not found", name));
+    t.data
+        .as_bytes()
+        .unwrap()
         .chunks_exact(4)
         .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
         .collect()
 }
 
 fn max_abs_divergence(a: &[f32], b: &[f32]) -> f32 {
-    a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).fold(0.0f32, f32::max)
+    a.iter()
+        .zip(b.iter())
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0f32, f32::max)
 }
 
 // ── §3 Round-trip compliance ──────────────────────────────────────────────────
@@ -136,7 +161,13 @@ fn compliance_gguf_round_trip_preserves_metadata() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
     let loader = GgufLoader;
-    let ir = loader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = loader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     assert_eq!(ir.metadata.get_str("general.architecture"), Some("phi"));
     assert_eq!(ir.metadata.get_str("general.name"), Some("umc-test-model"));
@@ -145,25 +176,76 @@ fn compliance_gguf_round_trip_preserves_metadata() {
     assert_eq!(ir.architecture.num_layers, 2);
 
     let out = NamedTempFile::with_suffix(".gguf").unwrap();
-    GgufSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    GgufSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = loader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.metadata.get_str("general.architecture"), Some("phi"), "§3: architecture metadata lost");
-    assert_eq!(ir2.metadata.get_str("general.name"), Some("umc-test-model"), "§3: name metadata lost");
-    assert_eq!(ir2.metadata.get_i64("phi.block_count"), Some(2), "§3: block_count lost");
-    assert_eq!(ir2.architecture.architecture, "phi", "§3: architecture config lost");
-    assert_eq!(ir2.tensors.len(), tensors.len(), "§3: tensor count changed on round-trip");
+    let ir2 = loader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.metadata.get_str("general.architecture"),
+        Some("phi"),
+        "§3: architecture metadata lost"
+    );
+    assert_eq!(
+        ir2.metadata.get_str("general.name"),
+        Some("umc-test-model"),
+        "§3: name metadata lost"
+    );
+    assert_eq!(
+        ir2.metadata.get_i64("phi.block_count"),
+        Some(2),
+        "§3: block_count lost"
+    );
+    assert_eq!(
+        ir2.architecture.architecture, "phi",
+        "§3: architecture config lost"
+    );
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "§3: tensor count changed on round-trip"
+    );
 }
 
 #[test]
 fn compliance_gguf_round_trip_preserves_tensor_data() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".gguf").unwrap();
-    GgufSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = GgufLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    GgufSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = GgufLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     for (name, _, original_vals) in &tensors {
         let reloaded = load_f32s(&ir2, name);
@@ -180,32 +262,77 @@ fn compliance_gguf_round_trip_preserves_tensor_data() {
 fn channel_gguf_to_safetensors_tensor_count() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), tensors.len(), "GGUF→SafeTensors tensor count changed");
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "GGUF→SafeTensors tensor count changed"
+    );
 }
 
 #[test]
 fn channel_gguf_to_safetensors_data_fidelity() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     for (name, _, original_vals) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original_vals);
         // §3: F32→F32 sémantique: δ < 1e-6
-        assert!(div < 1e-6,
+        assert!(
+            div < 1e-6,
             "GGUF→SafeTensors: tensor '{}' divergence {:.2e} exceeds F32 tolerance",
-            name, div);
+            name,
+            div
+        );
     }
 }
 
@@ -213,14 +340,39 @@ fn channel_gguf_to_safetensors_data_fidelity() {
 fn channel_gguf_to_safetensors_provenance() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    assert!(ir2.provenance.verify(), "§6 Security: provenance chain tampered");
-    assert!(ir2.provenance.len() >= 1, "§6 Security: provenance empty after conversion");
+    assert!(
+        ir2.provenance.verify(),
+        "§6 Security: provenance chain tampered"
+    );
+    assert!(
+        ir2.provenance.len() >= 1,
+        "§6 Security: provenance empty after conversion"
+    );
 }
 
 // ── Channel 2: GGUF → ONNX ───────────────────────────────────────────────────
@@ -229,30 +381,76 @@ fn channel_gguf_to_safetensors_provenance() {
 fn channel_gguf_to_onnx_tensor_count() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".onnx").unwrap();
-    OnnxSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    OnnxSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = OnnxLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), tensors.len(), "GGUF→ONNX tensor count changed");
+    let ir2 = OnnxLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "GGUF→ONNX tensor count changed"
+    );
 }
 
 #[test]
 fn channel_gguf_to_onnx_data_fidelity() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".onnx").unwrap();
-    OnnxSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = OnnxLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    OnnxSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = OnnxLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     for (name, _, original_vals) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original_vals);
-        assert!(div < 1e-6,
-            "GGUF→ONNX: tensor '{}' divergence {:.2e}", name, div);
+        assert!(
+            div < 1e-6,
+            "GGUF→ONNX: tensor '{}' divergence {:.2e}",
+            name,
+            div
+        );
     }
 }
 
@@ -262,30 +460,76 @@ fn channel_gguf_to_onnx_data_fidelity() {
 fn channel_gguf_to_pytorch_tensor_count() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".pt").unwrap();
-    PyTorchSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    PyTorchSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = PyTorchLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), tensors.len(), "GGUF→PyTorch tensor count changed");
+    let ir2 = PyTorchLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "GGUF→PyTorch tensor count changed"
+    );
 }
 
 #[test]
 fn channel_gguf_to_pytorch_data_fidelity() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".pt").unwrap();
-    PyTorchSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = PyTorchLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    PyTorchSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = PyTorchLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     for (name, _, original_vals) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original_vals);
-        assert!(div < 1e-6,
-            "GGUF→PyTorch: tensor '{}' divergence {:.2e}", name, div);
+        assert!(
+            div < 1e-6,
+            "GGUF→PyTorch: tensor '{}' divergence {:.2e}",
+            name,
+            div
+        );
     }
 }
 
@@ -295,17 +539,53 @@ fn channel_gguf_to_pytorch_data_fidelity() {
 fn channel_gguf_multihop_safetensors_gguf() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let mid = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir, mid.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir_mid = SafeTensorsLoader.load(mid.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            mid.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir_mid = SafeTensorsLoader
+        .load(
+            mid.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".gguf").unwrap();
-    GgufSaver.save(&ir_mid, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = GgufLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    GgufSaver
+        .save(
+            &ir_mid,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = GgufLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    assert_eq!(ir2.tensors.len(), tensors.len(), "Multi-hop GGUF→ST→GGUF tensor count changed");
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "Multi-hop GGUF→ST→GGUF tensor count changed"
+    );
     for (name, _, original) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original);
@@ -320,21 +600,62 @@ fn channel_gguf_multihop_safetensors_gguf() {
 fn channel_gguf_multihop_onnx_safetensors() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let mid = NamedTempFile::with_suffix(".onnx").unwrap();
-    OnnxSaver.save(&ir, mid.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir_mid = OnnxLoader.load(mid.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    OnnxSaver
+        .save(
+            &ir,
+            mid.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir_mid = OnnxLoader
+        .load(
+            mid.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir_mid, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir_mid,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    assert_eq!(ir2.tensors.len(), tensors.len(), "Multi-hop GGUF→ONNX→ST tensor count changed");
+    assert_eq!(
+        ir2.tensors.len(),
+        tensors.len(),
+        "Multi-hop GGUF→ONNX→ST tensor count changed"
+    );
     for (name, _, original) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original);
-        assert!(div < 1e-6, "Multi-hop ONNX '{}' divergence {:.2e}", name, div);
+        assert!(
+            div < 1e-6,
+            "Multi-hop ONNX '{}' divergence {:.2e}",
+            name,
+            div
+        );
     }
 }
 
@@ -345,29 +666,54 @@ fn compliance_extension_store_namespaced_keys() {
     let mut store = ExtensionStore::default();
 
     // Valid key
-    store.set("GGUF@v3/tokenizer.chat_template", b"test".to_vec()).unwrap();
-    assert_eq!(store.get("GGUF@v3/tokenizer.chat_template"), Some(b"test".as_slice()));
+    store
+        .set("GGUF@v3/tokenizer.chat_template", b"test".to_vec())
+        .unwrap();
+    assert_eq!(
+        store.get("GGUF@v3/tokenizer.chat_template"),
+        Some(b"test".as_slice())
+    );
 
     // Invalid key (no @)
-    assert!(store.set("GGUFv3/field", b"x".to_vec()).is_err(), "§4: invalid key accepted");
+    assert!(
+        store.set("GGUFv3/field", b"x".to_vec()).is_err(),
+        "§4: invalid key accepted"
+    );
 
     // Invalid key (slash before @)
-    assert!(store.set("GGUF/v3@field", b"x".to_vec()).is_err(), "§4: slash-before-at accepted");
+    assert!(
+        store.set("GGUF/v3@field", b"x".to_vec()).is_err(),
+        "§4: slash-before-at accepted"
+    );
 
     // Size limit enforced
     let mut small_store = ExtensionStore::new(10);
-    assert!(small_store.set("FMT@v1/big", vec![0u8; 11]).is_err(), "§4: size limit not enforced");
+    assert!(
+        small_store.set("FMT@v1/big", vec![0u8; 11]).is_err(),
+        "§4: size limit not enforced"
+    );
 }
 
 #[test]
 fn compliance_extension_store_in_ir_survives_gguf_roundtrip() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let mut ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let mut ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    ir.extensions.set("GGUF@v3/custom.field", b"hello-umc".to_vec()).unwrap();
-    assert_eq!(ir.extensions.get("GGUF@v3/custom.field"), Some(b"hello-umc".as_slice()),
-        "§4: ExtensionStore set/get broken");
+    ir.extensions
+        .set("GGUF@v3/custom.field", b"hello-umc".to_vec())
+        .unwrap();
+    assert_eq!(
+        ir.extensions.get("GGUF@v3/custom.field"),
+        Some(b"hello-umc".as_slice()),
+        "§4: ExtensionStore set/get broken"
+    );
 }
 
 // ── §5 Dijkstra routing ───────────────────────────────────────────────────────
@@ -411,7 +757,10 @@ fn compliance_dijkstra_multihop_finds_optimal() {
 fn compliance_dijkstra_no_path_for_unknown_format() {
     let g = ConversionGraph::default_graph();
     let result = find_path(&g, "GGUF", "NONEXISTENT_FORMAT_XYZ_ABC");
-    assert!(result.is_err(), "§5: should error for unknown target format");
+    assert!(
+        result.is_err(),
+        "§5: should error for unknown target format"
+    );
 }
 
 // ── §6 Security compliance ────────────────────────────────────────────────────
@@ -419,7 +768,8 @@ fn compliance_dijkstra_no_path_for_unknown_format() {
 #[test]
 fn compliance_security_rejects_bad_magic() {
     let mut f = NamedTempFile::with_suffix(".gguf").unwrap();
-    f.write_all(b"EVIL\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00").unwrap();
+    f.write_all(b"EVIL\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        .unwrap();
     f.flush().unwrap();
     let err = GgufLoader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop());
     assert!(err.is_err(), "§6: bad magic bytes accepted");
@@ -441,8 +791,17 @@ fn compliance_security_rejects_unsupported_version() {
 fn compliance_provenance_chain_is_tamper_evident() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert!(ir.provenance.verify(), "§6: provenance chain invalid after load");
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert!(
+        ir.provenance.verify(),
+        "§6: provenance chain invalid after load"
+    );
     assert!(ir.provenance.len() >= 1, "§6: provenance empty after load");
 }
 
@@ -454,9 +813,18 @@ fn compliance_performance_metadata_only_skips_tensors() {
     let src = build_synthetic_gguf(&tensors);
     let mut opts = LoadOptions::default();
     opts.metadata_only = true;
-    let ir = GgufLoader.load(src.path(), &opts, &ProgressCallback::noop()).unwrap();
-    assert!(ir.tensors.is_empty(), "§7: metadata_only must not load tensors");
-    assert_eq!(ir.metadata.get_str("general.architecture"), Some("phi"), "§7: metadata_only must load metadata");
+    let ir = GgufLoader
+        .load(src.path(), &opts, &ProgressCallback::noop())
+        .unwrap();
+    assert!(
+        ir.tensors.is_empty(),
+        "§7: metadata_only must not load tensors"
+    );
+    assert_eq!(
+        ir.metadata.get_str("general.architecture"),
+        Some("phi"),
+        "§7: metadata_only must load metadata"
+    );
 }
 
 // ── §8 Validation compliance ──────────────────────────────────────────────────
@@ -465,25 +833,57 @@ fn compliance_performance_metadata_only_skips_tensors() {
 fn compliance_structural_validation_passes_on_valid_ir() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     // Validate IR against itself — a no-op that must always pass
     let report = structural_validate(&ir, &ir).unwrap();
     assert!(report.passed, "§8: structural self-validation failed");
-    assert!(report.shape_mismatches.is_empty(), "§8: unexpected shape mismatches");
+    assert!(
+        report.shape_mismatches.is_empty(),
+        "§8: unexpected shape mismatches"
+    );
 }
 
 #[test]
 fn compliance_gguf_to_safetensors_validation_passes() {
     let tensors = make_test_tensors();
     let src = build_synthetic_gguf(&tensors);
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
     let out = NamedTempFile::with_suffix(".safetensors").unwrap();
-    SafeTensorsSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     let report = structural_validate(&ir, &ir2).unwrap();
-    assert!(report.passed, "§8: GGUF→SafeTensors structural validation failed: {}", report.summary());
+    assert!(
+        report.passed,
+        "§8: GGUF→SafeTensors structural validation failed: {}",
+        report.summary()
+    );
 }
 
 // ── §9 ConversionHints compliance ─────────────────────────────────────────────
@@ -515,13 +915,35 @@ fn compliance_all_native_channels_functional() {
     let src = build_synthetic_gguf(&tensors);
 
     let channels: &[(&str, fn(&UniversalIR, &std::path::Path))] = &[
-        ("GGUF→GGUF",         |ir, p| { GgufSaver.save(ir, p, &SaveOptions::default(), &ProgressCallback::noop()).unwrap(); }),
-        ("GGUF→SafeTensors",  |ir, p| { SafeTensorsSaver.save(ir, p, &SaveOptions::default(), &ProgressCallback::noop()).unwrap(); }),
-        ("GGUF→ONNX",         |ir, p| { OnnxSaver.save(ir, p, &SaveOptions::default(), &ProgressCallback::noop()).unwrap(); }),
-        ("GGUF→PyTorch",      |ir, p| { PyTorchSaver.save(ir, p, &SaveOptions::default(), &ProgressCallback::noop()).unwrap(); }),
+        ("GGUF→GGUF", |ir, p| {
+            GgufSaver
+                .save(ir, p, &SaveOptions::default(), &ProgressCallback::noop())
+                .unwrap();
+        }),
+        ("GGUF→SafeTensors", |ir, p| {
+            SafeTensorsSaver
+                .save(ir, p, &SaveOptions::default(), &ProgressCallback::noop())
+                .unwrap();
+        }),
+        ("GGUF→ONNX", |ir, p| {
+            OnnxSaver
+                .save(ir, p, &SaveOptions::default(), &ProgressCallback::noop())
+                .unwrap();
+        }),
+        ("GGUF→PyTorch", |ir, p| {
+            PyTorchSaver
+                .save(ir, p, &SaveOptions::default(), &ProgressCallback::noop())
+                .unwrap();
+        }),
     ];
 
-    let ir = GgufLoader.load(src.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            src.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     let exts = ["gguf", "safetensors", "onnx", "pt"];
 
     let mut passed = 0usize;
@@ -529,10 +951,18 @@ fn compliance_all_native_channels_functional() {
         let out = NamedTempFile::with_suffix(&format!(".{}", ext)).unwrap();
         save_fn(&ir, out.path());
         assert!(out.path().exists(), "{}: output file not created", label);
-        assert!(out.path().metadata().unwrap().len() > 0, "{}: output file empty", label);
+        assert!(
+            out.path().metadata().unwrap().len() > 0,
+            "{}: output file empty",
+            label
+        );
         passed += 1;
     }
-    assert_eq!(passed, channels.len(), "Not all conversion channels completed");
+    assert_eq!(
+        passed,
+        channels.len(),
+        "Not all conversion channels completed"
+    );
 }
 
 // ── Real phi-2 model tests (slow — run with: cargo test -- --ignored) ─────────
@@ -541,15 +971,22 @@ fn compliance_all_native_channels_functional() {
 #[ignore]
 fn phi2_load_metadata_only() {
     let model_path = std::path::Path::new("/home/fossouomartial/UMC/phi-2.Q4_K_M.gguf");
-    if !model_path.exists() { return; }
+    if !model_path.exists() {
+        return;
+    }
 
     let mut opts = LoadOptions::default();
     opts.metadata_only = true;
-    let ir = GgufLoader.load(model_path, &opts, &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(model_path, &opts, &ProgressCallback::noop())
+        .unwrap();
 
     assert!(!ir.metadata.is_empty(), "phi-2: metadata empty");
-    assert_eq!(ir.metadata.get_str("general.architecture"), Some("phi2"),
-        "phi-2: architecture not 'phi2'");
+    assert_eq!(
+        ir.metadata.get_str("general.architecture"),
+        Some("phi2"),
+        "phi-2: architecture not 'phi2'"
+    );
     assert!(ir.tensors.is_empty(), "phi-2: metadata_only loaded tensors");
     println!("phi-2 metadata: {}", ir.summary());
 }
@@ -558,18 +995,50 @@ fn phi2_load_metadata_only() {
 #[ignore]
 fn phi2_to_safetensors_full_conversion() {
     let model_path = std::path::Path::new("/home/fossouomartial/UMC/phi-2.Q4_K_M.gguf");
-    if !model_path.exists() { return; }
+    if !model_path.exists() {
+        return;
+    }
 
-    let ir = GgufLoader.load(model_path, &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            model_path,
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     let n_tensors = ir.tensors.len();
     let n_params = ir.num_parameters();
-    println!("phi-2: {} tensors, {:.2}B params", n_tensors, n_params as f64 / 1e9);
+    println!(
+        "phi-2: {} tensors, {:.2}B params",
+        n_tensors,
+        n_params as f64 / 1e9
+    );
 
-    let out = tempfile::Builder::new().suffix(".safetensors").tempfile().unwrap();
-    SafeTensorsSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    let out = tempfile::Builder::new()
+        .suffix(".safetensors")
+        .tempfile()
+        .unwrap();
+    SafeTensorsSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = SafeTensorsLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), n_tensors, "phi-2→SafeTensors: tensor count changed");
+    let ir2 = SafeTensorsLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        n_tensors,
+        "phi-2→SafeTensors: tensor count changed"
+    );
     println!("phi-2→SafeTensors: OK ({} tensors)", ir2.tensors.len());
 }
 
@@ -580,11 +1049,22 @@ fn phi2_to_onnx_full_conversion() {
     // 2.78B params × F32 = ~11 GB → OOM on most machines.
     // We test correctness on the first 10 tensors (sub-model slice).
     let model_path = std::path::Path::new("/home/fossouomartial/UMC/phi-2.Q4_K_M.gguf");
-    if !model_path.exists() { return; }
+    if !model_path.exists() {
+        return;
+    }
 
-    let ir_full = GgufLoader.load(model_path, &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir_full = GgufLoader
+        .load(
+            model_path,
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     let n_total = ir_full.tensors.len();
-    println!("phi-2: {} tensors total (ONNX slice test: first 10)", n_total);
+    println!(
+        "phi-2: {} tensors total (ONNX slice test: first 10)",
+        n_total
+    );
 
     // Build a slice IR with the first 10 tensors only
     let mut ir_slice = ir_full.clone();
@@ -595,10 +1075,27 @@ fn phi2_to_onnx_full_conversion() {
     assert_eq!(ir_slice.tensors.len(), 10.min(n_total));
 
     let out = tempfile::Builder::new().suffix(".onnx").tempfile().unwrap();
-    OnnxSaver.save(&ir_slice, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    OnnxSaver
+        .save(
+            &ir_slice,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = OnnxLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), ir_slice.tensors.len(), "phi-2→ONNX (slice): tensor count changed");
+    let ir2 = OnnxLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        ir_slice.tensors.len(),
+        "phi-2→ONNX (slice): tensor count changed"
+    );
     println!("phi-2→ONNX (slice, {} tensors): OK", ir2.tensors.len());
 }
 
@@ -606,18 +1103,45 @@ fn phi2_to_onnx_full_conversion() {
 #[ignore]
 fn phi2_gguf_round_trip() {
     let model_path = std::path::Path::new("/home/fossouomartial/UMC/phi-2.Q4_K_M.gguf");
-    if !model_path.exists() { return; }
+    if !model_path.exists() {
+        return;
+    }
 
-    let ir = GgufLoader.load(model_path, &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+    let ir = GgufLoader
+        .load(
+            model_path,
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
     let n_tensors = ir.tensors.len();
 
     let out = tempfile::Builder::new().suffix(".gguf").tempfile().unwrap();
-    GgufSaver.save(&ir, out.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+    GgufSaver
+        .save(
+            &ir,
+            out.path(),
+            &SaveOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
 
-    let ir2 = GgufLoader.load(out.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
-    assert_eq!(ir2.tensors.len(), n_tensors, "phi-2 GGUF round-trip: tensor count changed");
-    assert_eq!(ir2.metadata.get_str("general.architecture"),
-               ir.metadata.get_str("general.architecture"),
-               "phi-2 GGUF round-trip: architecture metadata lost");
+    let ir2 = GgufLoader
+        .load(
+            out.path(),
+            &LoadOptions::default(),
+            &ProgressCallback::noop(),
+        )
+        .unwrap();
+    assert_eq!(
+        ir2.tensors.len(),
+        n_tensors,
+        "phi-2 GGUF round-trip: tensor count changed"
+    );
+    assert_eq!(
+        ir2.metadata.get_str("general.architecture"),
+        ir.metadata.get_str("general.architecture"),
+        "phi-2 GGUF round-trip: architecture metadata lost"
+    );
     println!("phi-2 GGUF round-trip: OK ({} tensors)", ir2.tensors.len());
 }

@@ -21,12 +21,15 @@ pub enum ApiError {
 impl ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         let (status, code) = match self {
-            ApiError::NotFound(_)    => (actix_web::http::StatusCode::NOT_FOUND, "not_found"),
-            ApiError::Unauthorized   => (actix_web::http::StatusCode::UNAUTHORIZED, "unauthorized"),
-            ApiError::Forbidden      => (actix_web::http::StatusCode::FORBIDDEN, "forbidden"),
-            ApiError::BadRequest(_)  => (actix_web::http::StatusCode::BAD_REQUEST, "bad_request"),
-            ApiError::Conflict(_)    => (actix_web::http::StatusCode::CONFLICT, "conflict"),
-            ApiError::Internal(_)    => (actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
+            ApiError::NotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, "not_found"),
+            ApiError::Unauthorized => (actix_web::http::StatusCode::UNAUTHORIZED, "unauthorized"),
+            ApiError::Forbidden => (actix_web::http::StatusCode::FORBIDDEN, "forbidden"),
+            ApiError::BadRequest(_) => (actix_web::http::StatusCode::BAD_REQUEST, "bad_request"),
+            ApiError::Conflict(_) => (actix_web::http::StatusCode::CONFLICT, "conflict"),
+            ApiError::Internal(_) => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_error",
+            ),
         };
         HttpResponse::build(status).json(json!({
             "error": { "code": code, "message": self.to_string() }
@@ -44,5 +47,7 @@ impl From<sqlx::Error> for ApiError {
 }
 
 impl From<anyhow::Error> for ApiError {
-    fn from(e: anyhow::Error) -> Self { ApiError::Internal(e.to_string()) }
+    fn from(e: anyhow::Error) -> Self {
+        ApiError::Internal(e.to_string())
+    }
 }

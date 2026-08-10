@@ -1,7 +1,7 @@
-use std::collections::{BinaryHeap, HashMap};
-use std::cmp::Ordering;
-use umc_core::UmcError;
 use crate::ConversionGraph;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
+use umc_core::UmcError;
 
 /// A hop in the conversion path.
 #[derive(Debug, Clone)]
@@ -35,7 +35,9 @@ impl ConversionPath {
 
     /// Human-readable path description.
     pub fn display_path(&self) -> String {
-        let parts: Vec<String> = self.hops.iter()
+        let parts: Vec<String> = self
+            .hops
+            .iter()
             .map(|h| format!("{} → {}", h.source, h.target))
             .collect();
         parts.join(" → ")
@@ -51,15 +53,21 @@ struct State {
 }
 
 impl PartialEq for State {
-    fn eq(&self, other: &Self) -> bool { self.cost == other.cost && self.node == other.node }
+    fn eq(&self, other: &Self) -> bool {
+        self.cost == other.cost && self.node == other.node
+    }
 }
 impl Eq for State {}
 impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.partial_cmp(&self.cost)
+        other
+            .cost
+            .partial_cmp(&self.cost)
             .unwrap_or(Ordering::Equal)
             .then_with(|| self.node.cmp(&other.node))
     }
@@ -86,7 +94,10 @@ pub fn find_path(
     let mut heap = BinaryHeap::new();
 
     dist.insert(source.to_string(), 0.0);
-    heap.push(State { cost: 0.0, node: source.to_string() });
+    heap.push(State {
+        cost: 0.0,
+        node: source.to_string(),
+    });
 
     while let Some(State { cost, node }) = heap.pop() {
         if node == target {
@@ -121,9 +132,17 @@ pub fn find_path(
                 dist.insert(edge.target.clone(), next_cost);
                 prev.insert(
                     edge.target.clone(),
-                    (node.clone(), edge.cost, edge.native, edge.description.clone()),
+                    (
+                        node.clone(),
+                        edge.cost,
+                        edge.native,
+                        edge.description.clone(),
+                    ),
                 );
-                heap.push(State { cost: next_cost, node: edge.target.clone() });
+                heap.push(State {
+                    cost: next_cost,
+                    node: edge.target.clone(),
+                });
             }
         }
     }

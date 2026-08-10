@@ -1,6 +1,6 @@
 pub mod loader;
-pub mod saver;
 pub mod pickle;
+pub mod saver;
 
 pub use loader::PyTorchLoader;
 pub use saver::PyTorchSaver;

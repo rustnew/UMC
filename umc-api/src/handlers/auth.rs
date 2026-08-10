@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::{
     auth::{
-        encode_jwt, generate_refresh_token, hash_password, hash_refresh_token,
-        verify_password, AuthUser,
+        encode_jwt, generate_refresh_token, hash_password, hash_refresh_token, verify_password,
+        AuthUser,
     },
     errors::ApiError,
     models::{AuthResponse, LoginRequest, RegisterRequest, UserPublic},
@@ -25,16 +25,16 @@ pub async fn register(
         return Err(ApiError::BadRequest("Invalid email".into()));
     }
     if body.password.len() < 8 {
-        return Err(ApiError::BadRequest("Password must be at least 8 characters".into()));
+        return Err(ApiError::BadRequest(
+            "Password must be at least 8 characters".into(),
+        ));
     }
 
     // Check duplicate email
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
-    )
-    .bind(&body.email)
-    .fetch_one(&state.db)
-    .await?;
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
+        .bind(&body.email)
+        .fetch_one(&state.db)
+        .await?;
 
     if exists {
         return Err(ApiError::Conflict("Email already registered".into()));
@@ -44,7 +44,7 @@ pub async fn register(
     let user_id = Uuid::new_v4();
 
     sqlx::query(
-        "INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)"
+        "INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)",
     )
     .bind(user_id)
     .bind(&body.email)
@@ -81,7 +81,7 @@ pub async fn login(
 
     let row = sqlx::query(
         "SELECT id, email, password_hash, display_name, plan, is_active, created_at
-         FROM users WHERE email = $1"
+         FROM users WHERE email = $1",
     )
     .bind(&body.email)
     .fetch_optional(&state.db)
@@ -132,7 +132,9 @@ pub async fn login(
 // ── POST /auth/refresh ────────────────────────────────────────────────────────
 
 #[derive(serde::Deserialize)]
-pub struct RefreshRequest { pub refresh_token: String }
+pub struct RefreshRequest {
+    pub refresh_token: String,
+}
 
 pub async fn refresh(
     state: web::Data<AppState>,
@@ -145,7 +147,7 @@ pub async fn refresh(
          FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id
          WHERE rt.token_hash = $1
            AND rt.revoked = FALSE
-           AND rt.expires_at > NOW()"
+           AND rt.expires_at > NOW()",
     )
     .bind(&token_hash)
     .fetch_optional(&state.db)
@@ -176,7 +178,9 @@ pub async fn refresh(
 // ── POST /auth/logout ─────────────────────────────────────────────────────────
 
 #[derive(serde::Deserialize)]
-pub struct LogoutRequest { pub refresh_token: Option<String> }
+pub struct LogoutRequest {
+    pub refresh_token: Option<String>,
+}
 
 pub async fn logout(
     state: web::Data<AppState>,
@@ -195,17 +199,13 @@ pub async fn logout(
 
 // ── GET /auth/me ─────────────────────────────────────────────────────────────
 
-pub async fn me(
-    state: web::Data<AppState>,
-    user: AuthUser,
-) -> Result<HttpResponse, ApiError> {
+pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpResponse, ApiError> {
     let uid: Uuid = user.0.sub.parse().map_err(|_| ApiError::Unauthorized)?;
-    let row = sqlx::query(
-        "SELECT id, email, display_name, plan, created_at FROM users WHERE id = $1"
-    )
-    .bind(uid)
-    .fetch_one(&state.db)
-    .await?;
+    let row =
+        sqlx::query("SELECT id, email, display_name, plan, created_at FROM users WHERE id = $1")
+            .bind(uid)
+            .fetch_one(&state.db)
+            .await?;
 
     Ok(HttpResponse::Ok().json(UserPublic {
         id: row.get("id"),
@@ -229,19 +229,15 @@ async fn issue_tokens(
 
     let refresh_token = generate_refresh_token();
     let refresh_hash = hash_refresh_token(&refresh_token);
-    let refresh_expiry = chrono::Duration::seconds(
-        state.config.jwt_refresh_expiry_secs as i64
-    );
+    let refresh_expiry = chrono::Duration::seconds(state.config.jwt_refresh_expiry_secs as i64);
     let expires_at = Utc::now() + refresh_expiry;
 
-    sqlx::query(
-        "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)"
-    )
-    .bind(user_id)
-    .bind(&refresh_hash)
-    .bind(expires_at)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)")
+        .bind(user_id)
+        .bind(&refresh_hash)
+        .bind(expires_at)
+        .execute(&state.db)
+        .await?;
 
     Ok((access_token, refresh_token, expiry))
 }

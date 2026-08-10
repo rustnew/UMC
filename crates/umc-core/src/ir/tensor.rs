@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use memmap2::Mmap;
-use xxhash_rust::xxh64::xxh64;
-use crate::{DType, UmcError};
 use super::quantization::TensorQuantization;
+use crate::{DType, UmcError};
+use memmap2::Mmap;
+use std::sync::Arc;
+use xxhash_rust::xxh64::xxh64;
 
 // ── SecurityBounds ────────────────────────────────────────────────────────────
 
@@ -22,10 +22,10 @@ impl Default for SecurityBounds {
         Self {
             max_tensor_count: 1_000_000,
             max_metadata_count: 10_000,
-            max_string_length: 1_048_576,  // 1 MiB
+            max_string_length: 1_048_576, // 1 MiB
             max_shape_rank: 8,
-            max_tensor_size_bytes: 100 * 1024 * 1024 * 1024,  // 100 GiB per tensor
-            max_extension_bytes: 100 * 1024 * 1024,            // 100 MiB total extensions
+            max_tensor_size_bytes: 100 * 1024 * 1024 * 1024, // 100 GiB per tensor
+            max_extension_bytes: 100 * 1024 * 1024,          // 100 MiB total extensions
         }
     }
 }
@@ -35,9 +35,9 @@ impl Default for SecurityBounds {
 /// Memory layout of a tensor.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Layout {
-    CContiguous,   // Row-major (NumPy, PyTorch default)
-    FContiguous,   // Column-major (Fortran, some BLAS)
-    Custom,        // Custom strides (see Tensor.strides)
+    CContiguous, // Row-major (NumPy, PyTorch default)
+    FContiguous, // Column-major (Fortran, some BLAS)
+    Custom,      // Custom strides (see Tensor.strides)
 }
 
 // ── TensorData ────────────────────────────────────────────────────────────────
@@ -71,16 +71,22 @@ pub enum TensorData {
 #[derive(Debug, Clone)]
 pub enum TensorTransform {
     Transpose(Vec<usize>),
-    Slice { axis: usize, start: usize, end: usize },
+    Slice {
+        axis: usize,
+        start: usize,
+        end: usize,
+    },
 }
 
 impl TensorData {
     /// Byte slice view — never copies for MmapView.
     pub fn as_bytes(&self) -> Result<&[u8], UmcError> {
         match self {
-            Self::MmapView { mmap, offset, length } => {
-                Ok(&mmap[*offset..*offset + *length])
-            }
+            Self::MmapView {
+                mmap,
+                offset,
+                length,
+            } => Ok(&mmap[*offset..*offset + *length]),
             Self::Owned(data) => Ok(data.as_slice()),
             Self::Lazy { .. } => Err(UmcError::NotMaterialized("lazy tensor".into())),
             Self::Shared { target_name, .. } => Err(UmcError::IsReference(target_name.clone())),
@@ -109,7 +115,13 @@ impl TensorData {
 
     /// Materialise a Lazy tensor into a MmapView, verifying its checksum.
     pub fn materialize(&mut self) -> Result<(), UmcError> {
-        if let Self::Lazy { file_path, offset, length, checksum } = self {
+        if let Self::Lazy {
+            file_path,
+            offset,
+            length,
+            checksum,
+        } = self
+        {
             let path_str = file_path.display().to_string();
             let file = std::fs::File::open(&*file_path).map_err(UmcError::Io)?;
             let mmap = Arc::new(unsafe {
@@ -194,7 +206,11 @@ impl Tensor {
             shape,
             strides: None,
             layout: Layout::CContiguous,
-            data: TensorData::MmapView { mmap, offset, length },
+            data: TensorData::MmapView {
+                mmap,
+                offset,
+                length,
+            },
             checksum,
             quantization: None,
         }
@@ -203,7 +219,7 @@ impl Tensor {
     /// Number of elements (product of shape dimensions).
     pub fn num_elements(&self) -> usize {
         if self.shape.is_empty() {
-            1  // scalar
+            1 // scalar
         } else {
             self.shape.iter().product()
         }
@@ -232,13 +248,16 @@ impl TensorStore {
         Self {
             tensors: indexmap::IndexMap::new(),
             ram_usage_bytes: 0,
-            mmap_threshold_bytes: 64 * 1024 * 1024,  // 64 MiB threshold
+            mmap_threshold_bytes: 64 * 1024 * 1024, // 64 MiB threshold
             bounds: SecurityBounds::default(),
         }
     }
 
     pub fn with_bounds(bounds: SecurityBounds) -> Self {
-        Self { bounds, ..Self::new() }
+        Self {
+            bounds,
+            ..Self::new()
+        }
     }
 
     /// Insert a tensor with full security validation.
@@ -355,7 +374,9 @@ mod tests {
         store.insert(make_tensor("a", vec![1], 4)).unwrap();
         store.insert(make_tensor("b", vec![1], 4)).unwrap();
         let err = store.insert(make_tensor("c", vec![1], 4));
-        assert!(matches!(err, Err(UmcError::SecurityViolation { field, .. }) if field == "tensor_count"));
+        assert!(
+            matches!(err, Err(UmcError::SecurityViolation { field, .. }) if field == "tensor_count")
+        );
     }
 
     #[test]
@@ -365,7 +386,9 @@ mod tests {
         let mut store = TensorStore::with_bounds(bounds);
         let t = make_tensor("deep", vec![1, 2, 3, 4], 96);
         let err = store.insert(t);
-        assert!(matches!(err, Err(UmcError::SecurityViolation { field, .. }) if field == "shape_rank"));
+        assert!(
+            matches!(err, Err(UmcError::SecurityViolation { field, .. }) if field == "shape_rank")
+        );
     }
 
     #[test]

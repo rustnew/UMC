@@ -1,51 +1,50 @@
 /// Minimal pickle protocol 2/4 parser for PyTorch state_dict files.
 /// Handles exactly the patterns produced by torch.save(state_dict, path).
-
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
 
 // ── Pickle opcodes (subset used by PyTorch) ───────────────────────────────────
 
-const PROTO:              u8 = 0x80;
-const FRAME:              u8 = 0x95;
-const STOP:               u8 = b'.';
-const POP:                u8 = b'0';
-const POP_MARK:           u8 = b'1';
-const MARK:               u8 = b'(';
-const BININT1:            u8 = b'K';
-const BININT2:            u8 = b'M';
-const BININT:             u8 = b'J';
-const LONG1:              u8 = 0x8A;
-const NONE:               u8 = b'N';
-const NEWTRUE:            u8 = 0x88;
-const NEWFALSE:           u8 = 0x89;
-const BINUNICODE:         u8 = b'X';
-const SHORT_BINUNICODE:   u8 = 0x8C;
-const BINUNICODE8:        u8 = 0x8D;
-const BINSTRING:          u8 = b'T';
-const SHORT_BINSTRING:    u8 = b'U';
-const EMPTY_TUPLE:        u8 = b')';
-const TUPLE:              u8 = b't';
-const TUPLE1:             u8 = 0x85;
-const TUPLE2:             u8 = 0x86;
-const TUPLE3:             u8 = 0x87;
-const EMPTY_LIST:         u8 = b']';
-const APPENDS:            u8 = b'e';
-const APPEND:             u8 = b'a';
-const EMPTY_DICT:         u8 = b'}';
-const DICT:               u8 = b'd';
-const SETITEM:            u8 = b's';
-const SETITEMS:           u8 = b'u';
-const GLOBAL:             u8 = b'c';
-const REDUCE:             u8 = b'R';
-const BUILD:              u8 = b'b';
-const BINGET:             u8 = b'h';
-const LONG_BINGET:        u8 = b'j';
-const BINPUT:             u8 = b'q';
-const LONG_BINPUT:        u8 = b'r';
-const MEMOIZE:            u8 = 0x94;
-const BINPERSID:          u8 = b'Q';
-const NEWOBJ:             u8 = 0x81;
+const PROTO: u8 = 0x80;
+const FRAME: u8 = 0x95;
+const STOP: u8 = b'.';
+const POP: u8 = b'0';
+const POP_MARK: u8 = b'1';
+const MARK: u8 = b'(';
+const BININT1: u8 = b'K';
+const BININT2: u8 = b'M';
+const BININT: u8 = b'J';
+const LONG1: u8 = 0x8A;
+const NONE: u8 = b'N';
+const NEWTRUE: u8 = 0x88;
+const NEWFALSE: u8 = 0x89;
+const BINUNICODE: u8 = b'X';
+const SHORT_BINUNICODE: u8 = 0x8C;
+const BINUNICODE8: u8 = 0x8D;
+const BINSTRING: u8 = b'T';
+const SHORT_BINSTRING: u8 = b'U';
+const EMPTY_TUPLE: u8 = b')';
+const TUPLE: u8 = b't';
+const TUPLE1: u8 = 0x85;
+const TUPLE2: u8 = 0x86;
+const TUPLE3: u8 = 0x87;
+const EMPTY_LIST: u8 = b']';
+const APPENDS: u8 = b'e';
+const APPEND: u8 = b'a';
+const EMPTY_DICT: u8 = b'}';
+const DICT: u8 = b'd';
+const SETITEM: u8 = b's';
+const SETITEMS: u8 = b'u';
+const GLOBAL: u8 = b'c';
+const REDUCE: u8 = b'R';
+const BUILD: u8 = b'b';
+const BINGET: u8 = b'h';
+const LONG_BINGET: u8 = b'j';
+const BINPUT: u8 = b'q';
+const LONG_BINPUT: u8 = b'r';
+const MEMOIZE: u8 = 0x94;
+const BINPERSID: u8 = b'Q';
+const NEWOBJ: u8 = 0x81;
 
 // ── Value type ────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,11 @@ pub enum Pv {
     Dict(Vec<(Pv, Pv)>),
     Tuple(Vec<Pv>),
     /// PyTorch storage persistent reference
-    StorageRef { key: String, dtype_class: String, numel: usize },
+    StorageRef {
+        key: String,
+        dtype_class: String,
+        numel: usize,
+    },
     /// Reconstructed PyTorch tensor descriptor
     PtTensor {
         storage_key: String,
@@ -71,25 +74,51 @@ pub enum Pv {
         stride: Vec<usize>,
     },
     /// Fallback for unknown Global objects
-    Global { module: String, name: String },
-    Object { class: Box<Pv>, args: Box<Pv> },
+    Global {
+        module: String,
+        name: String,
+    },
+    Object {
+        class: Box<Pv>,
+        args: Box<Pv>,
+    },
 }
 
 impl Pv {
     pub fn as_str(&self) -> Option<&str> {
-        if let Pv::Str(s) = self { Some(s) } else { None }
+        if let Pv::Str(s) = self {
+            Some(s)
+        } else {
+            None
+        }
     }
     pub fn as_i64(&self) -> Option<i64> {
-        if let Pv::Int(n) = self { Some(*n) } else { None }
+        if let Pv::Int(n) = self {
+            Some(*n)
+        } else {
+            None
+        }
     }
     pub fn as_tuple(&self) -> Option<&[Pv]> {
-        if let Pv::Tuple(v) = self { Some(v) } else { None }
+        if let Pv::Tuple(v) = self {
+            Some(v)
+        } else {
+            None
+        }
     }
     pub fn as_list(&self) -> Option<&[Pv]> {
-        if let Pv::List(v) = self { Some(v) } else { None }
+        if let Pv::List(v) = self {
+            Some(v)
+        } else {
+            None
+        }
     }
     pub fn as_dict(&self) -> Option<&[(Pv, Pv)]> {
-        if let Pv::Dict(d) = self { Some(d) } else { None }
+        if let Pv::Dict(d) = self {
+            Some(d)
+        } else {
+            None
+        }
     }
 }
 
@@ -101,13 +130,19 @@ pub struct PickleParser<'a> {
     data: &'a [u8],
     pos: usize,
     stack: Vec<Pv>,
-    mark_stack: Vec<usize>,   // stack positions where MARK was placed
+    mark_stack: Vec<usize>, // stack positions where MARK was placed
     memo: HashMap<u32, Pv>,
 }
 
 impl<'a> PickleParser<'a> {
     pub fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0, stack: Vec::new(), mark_stack: Vec::new(), memo: HashMap::new() }
+        Self {
+            data,
+            pos: 0,
+            stack: Vec::new(),
+            mark_stack: Vec::new(),
+            memo: HashMap::new(),
+        }
     }
 
     fn read_u8(&mut self) -> Option<u8> {
@@ -135,8 +170,12 @@ impl<'a> PickleParser<'a> {
         while self.pos < self.data.len() && self.data[self.pos] != b'\n' {
             self.pos += 1;
         }
-        let s = std::str::from_utf8(&self.data[start..self.pos]).ok()?.to_string();
-        if self.pos < self.data.len() { self.pos += 1; } // skip \n
+        let s = std::str::from_utf8(&self.data[start..self.pos])
+            .ok()?
+            .to_string();
+        if self.pos < self.data.len() {
+            self.pos += 1;
+        } // skip \n
         Some(s)
     }
 
@@ -175,8 +214,12 @@ impl<'a> PickleParser<'a> {
                 MARK => {
                     self.mark_stack.push(self.stack.len());
                 }
-                POP => { self.pop(); }
-                POP_MARK => { self.pop_mark(); }
+                POP => {
+                    self.pop();
+                }
+                POP_MARK => {
+                    self.pop_mark();
+                }
                 NONE => self.push(Pv::None),
                 NEWTRUE => self.push(Pv::Bool(true)),
                 NEWFALSE => self.push(Pv::Bool(false)),
@@ -203,7 +246,7 @@ impl<'a> PickleParser<'a> {
                         val |= (b as i64) << (i * 8);
                     }
                     // Sign extend from n*8 bits
-                    if n < 8 && n > 0 && bytes[n-1] & 0x80 != 0 {
+                    if n < 8 && n > 0 && bytes[n - 1] & 0x80 != 0 {
                         val |= !((1i64 << (n * 8)) - 1);
                     }
                     self.push(Pv::Int(val));
@@ -236,7 +279,10 @@ impl<'a> PickleParser<'a> {
                 }
                 SHORT_BINSTRING => {
                     let n = self.read_u8().ok_or("SHORT_BINSTRING missing len")? as usize;
-                    let data = self.read_bytes(n).ok_or("SHORT_BINSTRING missing data")?.to_vec();
+                    let data = self
+                        .read_bytes(n)
+                        .ok_or("SHORT_BINSTRING missing data")?
+                        .to_vec();
                     self.push(Pv::Bytes(data));
                 }
                 EMPTY_TUPLE => self.push(Pv::Tuple(vec![])),
@@ -317,7 +363,10 @@ impl<'a> PickleParser<'a> {
                 NEWOBJ => {
                     let args = self.pop().ok_or("NEWOBJ missing args")?;
                     let cls = self.pop().ok_or("NEWOBJ missing class")?;
-                    self.push(Pv::Object { class: Box::new(cls), args: Box::new(args) });
+                    self.push(Pv::Object {
+                        class: Box::new(cls),
+                        args: Box::new(args),
+                    });
                 }
                 BUILD => {
                     let state = self.pop().ok_or("BUILD missing state")?;
@@ -336,14 +385,20 @@ impl<'a> PickleParser<'a> {
                 }
                 BINGET => {
                     let key = self.read_u8().ok_or("BINGET missing key")? as u32;
-                    let v = self.memo.get(&key).cloned()
+                    let v = self
+                        .memo
+                        .get(&key)
+                        .cloned()
                         .ok_or_else(|| format!("BINGET: key {} not in memo", key))?;
                     self.push(v);
                 }
                 LONG_BINGET => {
                     let b = self.read_bytes(4).ok_or("LONG_BINGET missing key")?;
                     let key = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
-                    let v = self.memo.get(&key).cloned()
+                    let v = self
+                        .memo
+                        .get(&key)
+                        .cloned()
                         .ok_or_else(|| format!("LONG_BINGET: key {} not in memo", key))?;
                     self.push(v);
                 }
@@ -380,7 +435,11 @@ impl<'a> PickleParser<'a> {
 
     /// Handle PyTorch REDUCE patterns for known classes.
     fn apply_reduce(&self, callable: Pv, args: Pv) -> Pv {
-        if let Pv::Global { ref module, ref name } = callable {
+        if let Pv::Global {
+            ref module,
+            ref name,
+        } = callable
+        {
             if (module == "torch._utils" || module == "torch") && name == "_rebuild_tensor_v2" {
                 if let Pv::Tuple(ref a) = args {
                     return self.rebuild_tensor_v2(a);
@@ -405,27 +464,48 @@ impl<'a> PickleParser<'a> {
                 }
             }
         }
-        Pv::Object { class: Box::new(callable), args: Box::new(args) }
+        Pv::Object {
+            class: Box::new(callable),
+            args: Box::new(args),
+        }
     }
 
     /// Reconstruct a tensor from _rebuild_tensor_v2 arguments.
     /// Args: (storage, storage_offset, size, stride, requires_grad, backward_hooks, metadata?)
     fn rebuild_tensor_v2(&self, args: &[Pv]) -> Pv {
-        if args.len() < 5 { return Pv::None; }
+        if args.len() < 5 {
+            return Pv::None;
+        }
         let (storage_key, dtype_class) = match &args[0] {
-            Pv::StorageRef { key, dtype_class, .. } => (key.clone(), dtype_class.clone()),
+            Pv::StorageRef {
+                key, dtype_class, ..
+            } => (key.clone(), dtype_class.clone()),
             _ => return Pv::None,
         };
         let storage_offset = args[1].as_i64().unwrap_or(0) as usize;
         let shape: Vec<usize> = match &args[2] {
-            Pv::Tuple(v) | Pv::List(v) => v.iter().filter_map(|x| x.as_i64()).map(|x| x as usize).collect(),
+            Pv::Tuple(v) | Pv::List(v) => v
+                .iter()
+                .filter_map(|x| x.as_i64())
+                .map(|x| x as usize)
+                .collect(),
             _ => vec![],
         };
         let stride: Vec<usize> = match &args[3] {
-            Pv::Tuple(v) | Pv::List(v) => v.iter().filter_map(|x| x.as_i64()).map(|x| x as usize).collect(),
+            Pv::Tuple(v) | Pv::List(v) => v
+                .iter()
+                .filter_map(|x| x.as_i64())
+                .map(|x| x as usize)
+                .collect(),
             _ => vec![],
         };
-        Pv::PtTensor { storage_key, dtype_class, storage_offset, shape, stride }
+        Pv::PtTensor {
+            storage_key,
+            dtype_class,
+            storage_offset,
+            shape,
+            stride,
+        }
     }
 
     /// Resolve a BINPERSID tuple into a StorageRef.
@@ -443,7 +523,11 @@ impl<'a> PickleParser<'a> {
                     };
                     let key = items[2].as_str().unwrap_or("0").to_string();
                     let numel = items[4].as_i64().unwrap_or(0) as usize;
-                    return Pv::StorageRef { key, dtype_class, numel };
+                    return Pv::StorageRef {
+                        key,
+                        dtype_class,
+                        numel,
+                    };
                 }
             }
         }

@@ -6,12 +6,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 use xxhash_rust::xxh64::xxh64;
 
-use crate::{
-    auth::AuthUser,
-    errors::ApiError,
-    models::UploadResponse,
-    state::AppState,
-};
+use crate::{auth::AuthUser, errors::ApiError, models::UploadResponse, state::AppState};
 
 pub async fn upload_file(
     state: web::Data<AppState>,
@@ -26,9 +21,11 @@ pub async fn upload_file(
     let mut total_size: u64 = 0;
     let mut all_bytes: Vec<u8> = Vec::new();
 
-    if let Some(mut field) = payload.try_next().await.map_err(|e| {
-        ApiError::BadRequest(format!("Multipart error: {e}"))
-    })? {
+    if let Some(mut field) = payload
+        .try_next()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Multipart error: {e}")))?
+    {
         let filename = field
             .content_disposition()
             .and_then(|cd| cd.get_filename())
@@ -41,9 +38,11 @@ pub async fn upload_file(
         let mut f = std::fs::File::create(&dest)
             .map_err(|e| ApiError::Internal(format!("Cannot create upload file: {e}")))?;
 
-        while let Some(chunk) = field.try_next().await.map_err(|e| {
-            ApiError::Internal(format!("Read chunk: {e}"))
-        })? {
+        while let Some(chunk) = field
+            .try_next()
+            .await
+            .map_err(|e| ApiError::Internal(format!("Read chunk: {e}")))?
+        {
             total_size += chunk.len() as u64;
             if total_size > state.config.max_upload_bytes {
                 let _ = std::fs::remove_file(&dest);
@@ -88,12 +87,20 @@ fn sanitize_filename(name: &str) -> String {
 
 fn detect_format_from_name(name: &str) -> Option<String> {
     let lower = name.to_lowercase();
-    if lower.ends_with(".gguf") { return Some("gguf".into()); }
-    if lower.ends_with(".safetensors") { return Some("safetensors".into()); }
-    if lower.ends_with(".onnx") { return Some("onnx".into()); }
+    if lower.ends_with(".gguf") {
+        return Some("gguf".into());
+    }
+    if lower.ends_with(".safetensors") {
+        return Some("safetensors".into());
+    }
+    if lower.ends_with(".onnx") {
+        return Some("onnx".into());
+    }
     if lower.ends_with(".pt") || lower.ends_with(".pth") || lower.ends_with(".bin") {
         return Some("pytorch".into());
     }
-    if lower.ends_with(".tflite") { return Some("tflite".into()); }
+    if lower.ends_with(".tflite") {
+        return Some("tflite".into());
+    }
     None
 }

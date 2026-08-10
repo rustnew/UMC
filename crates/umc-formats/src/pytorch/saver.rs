@@ -1,24 +1,32 @@
 use std::io::Write;
 use std::path::Path;
-use zip::{ZipWriter, write::FileOptions};
 use umc_core::{DType, UmcError, UniversalIR};
-use umc_core::{FormatSaver, SaveOptions, ProgressCallback, UMC_VERSION};
+use umc_core::{FormatSaver, ProgressCallback, SaveOptions, UMC_VERSION};
+use zip::{write::FileOptions, ZipWriter};
 
 pub struct PyTorchSaver;
 
 impl FormatSaver for PyTorchSaver {
-    fn format_name(&self) -> &'static str { "PyTorch" }
-    fn default_extension(&self) -> &'static str { "pt" }
+    fn format_name(&self) -> &'static str {
+        "PyTorch"
+    }
+    fn default_extension(&self) -> &'static str {
+        "pt"
+    }
 
-    fn save(&self, ir: &UniversalIR, path: &Path, _opts: &SaveOptions, progress: &ProgressCallback)
-        -> Result<(), UmcError>
-    {
+    fn save(
+        &self,
+        ir: &UniversalIR,
+        path: &Path,
+        _opts: &SaveOptions,
+        progress: &ProgressCallback,
+    ) -> Result<(), UmcError> {
         let tmp_path = path.with_extension("pt.tmp");
         {
             let file = std::fs::File::create(&tmp_path).map_err(UmcError::Io)?;
             let mut zip = ZipWriter::new(file);
-            let compress = FileOptions::<()>::default()
-                .compression_method(zip::CompressionMethod::Stored);
+            let compress =
+                FileOptions::<()>::default().compression_method(zip::CompressionMethod::Stored);
 
             // ── Sort tensors for deterministic output ────────────────────────
             let mut names: Vec<&str> = ir.tensors.iter().map(|(n, _)| n.as_str()).collect();
@@ -32,9 +40,10 @@ impl FormatSaver for PyTorchSaver {
 
             for name in &names {
                 let tensor = ir.tensors.get(*name).unwrap();
-                let raw = tensor.data.as_bytes().map_err(|e| {
-                    UmcError::Other(format!("PyTorch saver: '{}': {}", name, e))
-                })?;
+                let raw = tensor
+                    .data
+                    .as_bytes()
+                    .map_err(|e| UmcError::Other(format!("PyTorch saver: '{}': {}", name, e)))?;
 
                 let storage_file = format!("archive/data/{}", storage_index);
                 zip.start_file(&storage_file, compress)
@@ -95,17 +104,17 @@ fn c_contiguous_strides(shape: &[usize]) -> Vec<usize> {
 
 fn dtype_to_storage_class(dtype: &DType) -> &'static str {
     match dtype {
-        DType::F32  => "FloatStorage",
-        DType::F16  => "HalfStorage",
+        DType::F32 => "FloatStorage",
+        DType::F16 => "HalfStorage",
         DType::BF16 => "BFloat16Storage",
-        DType::F64  => "DoubleStorage",
-        DType::I64  => "LongStorage",
-        DType::I32  => "IntStorage",
-        DType::I16  => "ShortStorage",
-        DType::U8   => "ByteStorage",
-        DType::I8   => "CharStorage",
+        DType::F64 => "DoubleStorage",
+        DType::I64 => "LongStorage",
+        DType::I32 => "IntStorage",
+        DType::I16 => "ShortStorage",
+        DType::U8 => "ByteStorage",
+        DType::I8 => "CharStorage",
         DType::Bool => "BoolStorage",
-        _           => "FloatStorage",
+        _ => "FloatStorage",
     }
 }
 
@@ -144,27 +153,34 @@ fn write_state_dict_pickle(entries: &[PtTensorEntry]) -> Vec<u8> {
 
         // Arg 0: storage (BINPERSID with persistent tuple)
         // Push the persistent ID tuple
-        out.push(b'(');  // MARK
-        // 'storage' string
-        out.push(0x8C); out.push(7); out.extend_from_slice(b"storage");
+        out.push(b'('); // MARK
+                        // 'storage' string
+        out.push(0x8C);
+        out.push(7);
+        out.extend_from_slice(b"storage");
         // storage class
         out.push(b'c');
         out.extend_from_slice(b"torch\n");
         let sc = dtype_to_storage_class(&entry.dtype);
-        out.extend_from_slice(sc.as_bytes()); out.push(b'\n');
+        out.extend_from_slice(sc.as_bytes());
+        out.push(b'\n');
         // key (storage index as string)
         let key_str = entry.storage_idx.to_string();
-        out.push(0x8C); out.push(key_str.len() as u8);
+        out.push(0x8C);
+        out.push(key_str.len() as u8);
         out.extend_from_slice(key_str.as_bytes());
         // device
-        out.push(0x8C); out.push(3); out.extend_from_slice(b"cpu");
+        out.push(0x8C);
+        out.push(3);
+        out.extend_from_slice(b"cpu");
         // numel
         write_binint(&mut out, entry.numel as i64);
         out.push(b't'); // TUPLE (from MARK)
         out.push(b'Q'); // BINPERSID
 
         // Arg 1: storage_offset = 0
-        out.push(b'K'); out.push(0); // BININT1 = 0
+        out.push(b'K');
+        out.push(0); // BININT1 = 0
 
         // Arg 2: shape (tuple of dims)
         out.push(b'(');
@@ -181,16 +197,17 @@ fn write_state_dict_pickle(entries: &[PtTensorEntry]) -> Vec<u8> {
         out.push(b't'); // TUPLE
 
         // Arg 4: requires_grad = False
-        out.push(0x89);  // NEWFALSE
+        out.push(0x89); // NEWFALSE
 
         // Arg 5: backward_hooks = OrderedDict()
-        out.push(b'c'); out.extend_from_slice(b"collections\nOrderedDict\n");
+        out.push(b'c');
+        out.extend_from_slice(b"collections\nOrderedDict\n");
         out.push(b')'); // EMPTY_TUPLE
         out.push(b'R'); // REDUCE → OrderedDict()
 
         // Close args tuple
         out.push(b't'); // TUPLE
-        // REDUCE
+                        // REDUCE
         out.push(b'R');
     }
 

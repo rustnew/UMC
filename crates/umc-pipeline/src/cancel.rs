@@ -1,4 +1,7 @@
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 /// Cooperative cancellation token shared across pipeline threads.
 #[derive(Clone, Default, Debug)]
@@ -8,7 +11,9 @@ pub struct CancellationToken {
 
 impl CancellationToken {
     pub fn new() -> Self {
-        Self { cancelled: Arc::new(AtomicBool::new(false)) }
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// Signal cancellation — all threads will stop at their next checkpoint.

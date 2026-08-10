@@ -1,5 +1,5 @@
-use sha2::{Sha256, Digest};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 /// Tamper-evident provenance chain — append-only audit log.
 ///
@@ -54,7 +54,10 @@ impl ProvenanceChain {
         let seed = format!("UMC_ROOT_{}_{}", timestamp, source_path.display());
         let root_hash = hex::encode(Sha256::digest(seed.as_bytes()));
         let _ = source_format; // used in seed indirectly via path
-        Self { entries: Vec::new(), root_hash }
+        Self {
+            entries: Vec::new(),
+            root_hash,
+        }
     }
 
     /// Append a new entry — the only mutation allowed.
@@ -113,9 +116,8 @@ impl ProvenanceChain {
                 "max_divergence": entry.max_divergence,
                 "warnings": entry.warnings,
             });
-            let recomputed_content_hash = hex::encode(
-                Sha256::digest(content.to_string().as_bytes())
-            );
+            let recomputed_content_hash =
+                hex::encode(Sha256::digest(content.to_string().as_bytes()));
             if recomputed_content_hash != entry.content_hash {
                 return false;
             }

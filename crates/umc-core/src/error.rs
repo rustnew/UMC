@@ -12,7 +12,11 @@ pub enum UmcError {
     Mmap { context: String, msg: String },
 
     #[error("Atomic rename failed from '{src}' to '{dst}': {msg}")]
-    AtomicRename { src: String, dst: String, msg: String },
+    AtomicRename {
+        src: String,
+        dst: String,
+        msg: String,
+    },
 
     // ── Format detection ───────────────────────────────────────────────────
     #[error(
@@ -31,10 +35,18 @@ pub enum UmcError {
          Expected {expected:?}, found {found:?}.\n\
          The file may be corrupted or truncated."
     )]
-    InvalidMagic { path: String, expected: Vec<u8>, found: Vec<u8> },
+    InvalidMagic {
+        path: String,
+        expected: Vec<u8>,
+        found: Vec<u8>,
+    },
 
     #[error("File '{path}' appears truncated: expected at least {expected} bytes, got {actual}")]
-    FileTruncated { path: String, expected: usize, actual: usize },
+    FileTruncated {
+        path: String,
+        expected: usize,
+        actual: usize,
+    },
 
     #[error("Unexpected EOF while reading '{context}' at offset {offset}")]
     UnexpectedEof { context: String, offset: u64 },
@@ -54,7 +66,11 @@ pub enum UmcError {
     },
 
     #[error("Checksum mismatch for '{context}': expected 0x{expected:016x}, got 0x{actual:016x}")]
-    ChecksumMismatch { context: String, expected: u64, actual: u64 },
+    ChecksumMismatch {
+        context: String,
+        expected: u64,
+        actual: u64,
+    },
 
     #[error("Tensor '{0}' has not been materialised yet (still Lazy). Call materialize() first.")]
     NotMaterialized(String),
@@ -76,7 +92,11 @@ pub enum UmcError {
         "Security limit exceeded for field '{field}': value {value} > limit {limit}.\n\
          This may indicate a malformed or malicious file."
     )]
-    SecurityViolation { field: String, value: usize, limit: usize },
+    SecurityViolation {
+        field: String,
+        value: usize,
+        limit: usize,
+    },
 
     #[error(
         "Suspicious value for '{field}': {value}.\n\
@@ -103,21 +123,40 @@ pub enum UmcError {
         "No conversion path found from '{from}' to '{to}'.\n\
          Supported formats: {available}"
     )]
-    NoConversionPath { from: String, to: String, available: String },
+    NoConversionPath {
+        from: String,
+        to: String,
+        available: String,
+    },
 
     #[error(
         "Operator '{op_type}' (domain '{domain}') is not supported by format '{target}'.\n\
          It has been preserved in the ExtensionStore for round-trip, \
          but the output cannot be executed."
     )]
-    UnsupportedOp { op_type: String, domain: String, target: String },
+    UnsupportedOp {
+        op_type: String,
+        domain: String,
+        target: String,
+    },
 
     #[error("DType {dtype} is not supported by format '{target}'. Automatic conversion to {suggested} applied.")]
-    DTypeNotSupported { dtype: String, target: String, suggested: String },
+    DTypeNotSupported {
+        dtype: String,
+        target: String,
+        suggested: String,
+    },
 
-    #[error("Conversion from '{from}' to '{to}' requires the '{tool}' tool.\n\
-             Install it at: {install_url}")]
-    ExternalToolRequired { from: String, to: String, tool: String, install_url: String },
+    #[error(
+        "Conversion from '{from}' to '{to}' requires the '{tool}' tool.\n\
+             Install it at: {install_url}"
+    )]
+    ExternalToolRequired {
+        from: String,
+        to: String,
+        tool: String,
+        install_url: String,
+    },
 
     // ── Validation ─────────────────────────────────────────────────────────
     #[error("Structural validation failed: {reason}")]
@@ -164,9 +203,9 @@ pub enum UmcError {
 impl UmcError {
     /// Return true if this error is recoverable (conversion can continue with a warning).
     pub fn is_recoverable(&self) -> bool {
-        matches!(self,
-            Self::UnsupportedOp { .. }
-            | Self::DTypeNotSupported { .. }
+        matches!(
+            self,
+            Self::UnsupportedOp { .. } | Self::DTypeNotSupported { .. }
         )
     }
 }

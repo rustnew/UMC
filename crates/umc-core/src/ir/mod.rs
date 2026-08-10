@@ -1,20 +1,20 @@
-pub mod tensor;
-pub mod quantization;
-pub mod extension;
-pub mod provenance;
-pub mod graph;
-pub mod tokenizer;
 pub mod adapter;
+pub mod extension;
+pub mod graph;
+pub mod provenance;
+pub mod quantization;
+pub mod tensor;
+pub mod tokenizer;
 
 use serde::{Deserialize, Serialize};
 
-pub use tensor::{Tensor, TensorData, TensorStore, Layout, SecurityBounds};
-pub use quantization::{TensorQuantization, QuantScheme, StorageOrder, QuantizationStore};
-pub use extension::ExtensionStore;
-pub use provenance::ProvenanceChain;
-pub use graph::ComputeGraph;
-pub use tokenizer::TokenizerStore;
 pub use adapter::AdapterInfo;
+pub use extension::ExtensionStore;
+pub use graph::ComputeGraph;
+pub use provenance::ProvenanceChain;
+pub use quantization::{QuantScheme, QuantizationStore, StorageOrder, TensorQuantization};
+pub use tensor::{Layout, SecurityBounds, Tensor, TensorData, TensorStore};
+pub use tokenizer::TokenizerStore;
 
 /// Universal Intermediate Representation — the heart of UMC.
 ///
@@ -269,7 +269,12 @@ impl ConversionHintsMap {
     pub fn get(&self, source: &str, target: &str) -> Option<&ConversionHints> {
         self.hints.get(&(source.to_string(), target.to_string()))
     }
-    pub fn insert(&mut self, source: impl Into<String>, target: impl Into<String>, hints: ConversionHints) {
+    pub fn insert(
+        &mut self,
+        source: impl Into<String>,
+        target: impl Into<String>,
+        hints: ConversionHints,
+    ) {
         self.hints.insert((source.into(), target.into()), hints);
     }
 }

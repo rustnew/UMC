@@ -34,9 +34,8 @@ pub async fn create_job(
         }
     }
 
-    let source_path = source_path.ok_or_else(|| ApiError::NotFound(
-        format!("Upload {} not found", body.upload_id)
-    ))?;
+    let source_path = source_path
+        .ok_or_else(|| ApiError::NotFound(format!("Upload {} not found", body.upload_id)))?;
 
     let source_size = source_path.metadata().map(|m| m.len() as i64).ok();
     let job_id = Uuid::new_v4();
@@ -49,7 +48,7 @@ pub async fn create_job(
         "INSERT INTO conversion_jobs
          (id, user_id, source_format, target_format, validate_mode, generate_cert,
           extra_options, source_file_path, source_file_size, output_file_path, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'queued')"
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'queued')",
     )
     .bind(job_id)
     .bind(user_id)
@@ -83,17 +82,22 @@ pub async fn list_jobs(
     let jobs: Vec<ConversionJob> = if let Some(status) = &query.status {
         sqlx::query_as(
             "SELECT * FROM conversion_jobs WHERE user_id=$1 AND status=$2
-             ORDER BY created_at DESC LIMIT $3 OFFSET $4"
+             ORDER BY created_at DESC LIMIT $3 OFFSET $4",
         )
-        .bind(user_id).bind(status).bind(query.limit).bind(query.offset)
+        .bind(user_id)
+        .bind(status)
+        .bind(query.limit)
+        .bind(query.offset)
         .fetch_all(&state.db)
         .await?
     } else {
         sqlx::query_as(
             "SELECT * FROM conversion_jobs WHERE user_id=$1
-             ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+             ORDER BY created_at DESC LIMIT $2 OFFSET $3",
         )
-        .bind(user_id).bind(query.limit).bind(query.offset)
+        .bind(user_id)
+        .bind(query.limit)
+        .bind(query.offset)
         .fetch_all(&state.db)
         .await?
     };
@@ -141,12 +145,10 @@ pub async fn cancel_job(
         return Err(ApiError::BadRequest("Job is already terminal".into()));
     }
 
-    sqlx::query(
-        "UPDATE conversion_jobs SET status='cancelled', finished_at=NOW() WHERE id=$1"
-    )
-    .bind(job_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE conversion_jobs SET status='cancelled', finished_at=NOW() WHERE id=$1")
+        .bind(job_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(HttpResponse::NoContent().finish())
 }
@@ -169,13 +171,13 @@ pub async fn download_job(
         return Err(ApiError::BadRequest("Job is not complete".into()));
     }
 
-    let output_path = job.output_file_path.ok_or_else(|| {
-        ApiError::NotFound("No output file".into())
-    })?;
+    let output_path = job
+        .output_file_path
+        .ok_or_else(|| ApiError::NotFound("No output file".into()))?;
 
-    let data = tokio::fs::read(&output_path).await.map_err(|e| {
-        ApiError::Internal(format!("Read output: {e}"))
-    })?;
+    let data = tokio::fs::read(&output_path)
+        .await
+        .map_err(|e| ApiError::Internal(format!("Read output: {e}")))?;
 
     let ext = std::path::Path::new(&output_path)
         .extension()
@@ -183,10 +185,7 @@ pub async fn download_job(
         .unwrap_or("bin");
 
     let content_type = mime_for_ext(ext);
-    let disposition = format!(
-        "attachment; filename=\"converted_{}.{}\"",
-        job_id, ext
-    );
+    let disposition = format!("attachment; filename=\"converted_{}.{}\"", job_id, ext);
 
     Ok(HttpResponse::Ok()
         .content_type(content_type)
@@ -226,8 +225,9 @@ fn extension_for_format(fmt: &str) -> &'static str {
 
 fn mime_for_ext(ext: &str) -> &'static str {
     match ext {
-        "onnx" | "gguf" | "safetensors" | "pt" | "pth" | "tflite" | "pte" | "engine" =>
-            "application/octet-stream",
+        "onnx" | "gguf" | "safetensors" | "pt" | "pth" | "tflite" | "pte" | "engine" => {
+            "application/octet-stream"
+        }
         "json" => "application/json",
         "xml" => "application/xml",
         _ => "application/octet-stream",

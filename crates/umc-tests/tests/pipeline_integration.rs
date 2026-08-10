@@ -1,7 +1,7 @@
 use umc_core::ProgressCallback;
 use umc_pipeline::{ConversionPipeline, ConversionRequest};
-use umc_validate::ValidationMode;
 use umc_tests::write_minimal_gguf;
+use umc_validate::ValidationMode;
 
 #[test]
 fn test_pipeline_gguf_to_safetensors_no_validate() {
@@ -29,7 +29,10 @@ fn test_pipeline_gguf_to_safetensors_structural_validate() {
 
     let result = pipeline.convert(req, &ProgressCallback::noop()).unwrap();
     assert!(output.path().exists());
-    assert!(result.certificate.is_some(), "Structural pass must produce a certificate");
+    assert!(
+        result.certificate.is_some(),
+        "Structural pass must produce a certificate"
+    );
 }
 
 #[test]
@@ -58,7 +61,10 @@ fn test_pipeline_result_summary_contains_formats() {
     let result = pipeline.convert(req, &ProgressCallback::noop()).unwrap();
     let summary = result.summary();
     assert!(summary.contains("GGUF"), "Summary must mention GGUF");
-    assert!(summary.contains("SafeTensors"), "Summary must mention SafeTensors");
+    assert!(
+        summary.contains("SafeTensors"),
+        "Summary must mention SafeTensors"
+    );
 }
 
 #[test]

@@ -1,32 +1,29 @@
+use memmap2::Mmap;
 use std::path::Path;
 use std::sync::Arc;
-use memmap2::Mmap;
 use umc_core::{
-    UmcError, UniversalIR, DType,
-    FormatLoader, LoadOptions, ProgressCallback,
-    Tensor, GraphContent,
-    ir::provenance::ProvenanceEntryData,
-    UMC_VERSION,
+    ir::provenance::ProvenanceEntryData, DType, FormatLoader, GraphContent, LoadOptions,
+    ProgressCallback, Tensor, UmcError, UniversalIR, UMC_VERSION,
 };
 
 fn st_dtype_to_umc(s: &str) -> Result<DType, UmcError> {
     match s {
-        "F64"      => Ok(DType::F64),
-        "F32"      => Ok(DType::F32),
-        "F16"      => Ok(DType::F16),
-        "BF16"     => Ok(DType::BF16),
-        "I64"      => Ok(DType::I64),
-        "I32"      => Ok(DType::I32),
-        "I16"      => Ok(DType::I16),
-        "I8"       => Ok(DType::I8),
-        "U64"      => Ok(DType::U64),
-        "U32"      => Ok(DType::U32),
-        "U16"      => Ok(DType::U16),
-        "U8"       => Ok(DType::U8),
-        "BOOL"     => Ok(DType::Bool),
-        "F8_E4M3"  => Ok(DType::F8E4M3),
-        "F8_E5M2"  => Ok(DType::F8E5M2),
-        other      => Ok(DType::Custom(other.to_string())),
+        "F64" => Ok(DType::F64),
+        "F32" => Ok(DType::F32),
+        "F16" => Ok(DType::F16),
+        "BF16" => Ok(DType::BF16),
+        "I64" => Ok(DType::I64),
+        "I32" => Ok(DType::I32),
+        "I16" => Ok(DType::I16),
+        "I8" => Ok(DType::I8),
+        "U64" => Ok(DType::U64),
+        "U32" => Ok(DType::U32),
+        "U16" => Ok(DType::U16),
+        "U8" => Ok(DType::U8),
+        "BOOL" => Ok(DType::Bool),
+        "F8_E4M3" => Ok(DType::F8E4M3),
+        "F8_E5M2" => Ok(DType::F8E5M2),
+        other => Ok(DType::Custom(other.to_string())),
     }
 }
 
@@ -34,15 +31,21 @@ fn st_dtype_to_umc(s: &str) -> Result<DType, UmcError> {
 pub struct SafeTensorsLoader;
 
 impl FormatLoader for SafeTensorsLoader {
-    fn format_name(&self) -> &'static str { "SafeTensors" }
+    fn format_name(&self) -> &'static str {
+        "SafeTensors"
+    }
 
     fn can_load(&self, path: &Path) -> bool {
         // Check magic: 8 bytes LE size + '{'
-        let Ok(mut f) = std::fs::File::open(path) else { return false; };
+        let Ok(mut f) = std::fs::File::open(path) else {
+            return false;
+        };
         let mut buf = [0u8; 9];
         use std::io::Read;
-        if f.read_exact(&mut buf).is_err() { return false; }
-        let size = u64::from_le_bytes(buf[0..8].try_into().unwrap_or([0;8]));
+        if f.read_exact(&mut buf).is_err() {
+            return false;
+        }
+        let size = u64::from_le_bytes(buf[0..8].try_into().unwrap_or([0; 8]));
         buf[8] == b'{' && size > 2 && size < 100_000_000
     }
 
@@ -73,7 +76,7 @@ impl FormatLoader for SafeTensorsLoader {
             });
         }
 
-        let header_size = u64::from_le_bytes(data[0..8].try_into().unwrap_or([0;8])) as usize;
+        let header_size = u64::from_le_bytes(data[0..8].try_into().unwrap_or([0; 8])) as usize;
 
         if 8 + header_size > data.len() {
             return Err(UmcError::FileTruncated {
@@ -84,12 +87,12 @@ impl FormatLoader for SafeTensorsLoader {
         }
 
         let header_bytes = &data[8..8 + header_size];
-        let header: serde_json::Value = serde_json::from_slice(header_bytes)
-            .map_err(UmcError::Json)?;
+        let header: serde_json::Value =
+            serde_json::from_slice(header_bytes).map_err(UmcError::Json)?;
 
-        let header_obj = header.as_object().ok_or_else(|| {
-            UmcError::Other("SafeTensors header is not a JSON object".into())
-        })?;
+        let header_obj = header
+            .as_object()
+            .ok_or_else(|| UmcError::Other("SafeTensors header is not a JSON object".into()))?;
 
         // Security: max 1M tensors
         if header_obj.len() > 1_000_001 {
@@ -108,7 +111,8 @@ impl FormatLoader for SafeTensorsLoader {
             if let Some(meta_obj) = meta_val.as_object() {
                 for (k, v) in meta_obj {
                     if let Some(s) = v.as_str() {
-                        ir.metadata.insert(k.clone(), umc_core::MetaValue::String(s.to_string()));
+                        ir.metadata
+                            .insert(k.clone(), umc_core::MetaValue::String(s.to_string()));
                     }
                 }
             }
@@ -121,11 +125,13 @@ impl FormatLoader for SafeTensorsLoader {
         progress.set_total(header_obj.len() as u64);
 
         for (name, tensor_info) in header_obj {
-            if name == "__metadata__" { continue; }
+            if name == "__metadata__" {
+                continue;
+            }
 
-            let dtype_str = tensor_info["dtype"].as_str().ok_or_else(|| {
-                UmcError::Other(format!("Tensor '{}' missing dtype", name))
-            })?;
+            let dtype_str = tensor_info["dtype"]
+                .as_str()
+                .ok_or_else(|| UmcError::Other(format!("Tensor '{}' missing dtype", name)))?;
             let dtype = st_dtype_to_umc(dtype_str)?;
 
             let shape: Vec<usize> = tensor_info["shape"]
@@ -139,10 +145,10 @@ impl FormatLoader for SafeTensorsLoader {
                 UmcError::Other(format!("Tensor '{}' missing data_offsets", name))
             })?;
             let start = offsets[0].as_u64().unwrap_or(0) as usize;
-            let end   = offsets[1].as_u64().unwrap_or(0) as usize;
+            let end = offsets[1].as_u64().unwrap_or(0) as usize;
 
             let abs_start = data_start + start;
-            let abs_end   = data_start + end;
+            let abs_end = data_start + end;
             let length = end - start;
 
             // Security bounds check
@@ -156,20 +162,18 @@ impl FormatLoader for SafeTensorsLoader {
                 });
             }
 
-            let tensor = Tensor::from_mmap(
-                name,
-                dtype,
-                shape,
-                Arc::clone(&mmap),
-                abs_start,
-                length,
-            );
+            let tensor =
+                Tensor::from_mmap(name, dtype, shape, Arc::clone(&mmap), abs_start, length);
             ir.tensors.insert(tensor)?;
             progress.increment(&format!("Loaded '{}'", name));
         }
 
         ir.graph = GraphContent::WeightsOnly {
-            architecture: ir.metadata.get_str("architecture").unwrap_or("unknown").to_string(),
+            architecture: ir
+                .metadata
+                .get_str("architecture")
+                .unwrap_or("unknown")
+                .to_string(),
             template_available: false,
             template_name: None,
         };
@@ -209,11 +213,14 @@ mod tests {
         for (name, dtype, shape, values) in tensors {
             let bytes: Vec<u8> = values.iter().flat_map(|f| f.to_le_bytes()).collect();
             let end = offset + bytes.len() as u64;
-            header_map.insert(name.to_string(), serde_json::json!({
-                "dtype": dtype,
-                "shape": shape,
-                "data_offsets": [offset, end],
-            }));
+            header_map.insert(
+                name.to_string(),
+                serde_json::json!({
+                    "dtype": dtype,
+                    "shape": shape,
+                    "data_offsets": [offset, end],
+                }),
+            );
             offset = end;
             data_parts.push(bytes);
         }
@@ -222,7 +229,8 @@ mod tests {
         let header_bytes = header_json.as_bytes();
 
         let mut f = NamedTempFile::new().unwrap();
-        f.write_all(&(header_bytes.len() as u64).to_le_bytes()).unwrap();
+        f.write_all(&(header_bytes.len() as u64).to_le_bytes())
+            .unwrap();
         f.write_all(header_bytes).unwrap();
         for part in &data_parts {
             f.write_all(part).unwrap();
@@ -235,7 +243,9 @@ mod tests {
     fn test_load_f32_tensor() {
         let f = make_st_file(&[("weight", "F32", vec![2, 2], &[1.0, 2.0, 3.0, 4.0])]);
         let loader = SafeTensorsLoader;
-        let ir = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &LoadOptions::default(), &ProgressCallback::noop())
+            .unwrap();
         assert_eq!(ir.tensors.len(), 1);
         let t = ir.tensors.get("weight").unwrap();
         assert_eq!(t.dtype, DType::F32);
@@ -252,13 +262,16 @@ mod tests {
         let header_str = header.to_string();
         let mut f = NamedTempFile::new().unwrap();
         use std::io::Write;
-        f.write_all(&(header_str.len() as u64).to_le_bytes()).unwrap();
+        f.write_all(&(header_str.len() as u64).to_le_bytes())
+            .unwrap();
         f.write_all(header_str.as_bytes()).unwrap();
         f.write_all(&bf16_bytes).unwrap();
         f.flush().unwrap();
 
         let loader = SafeTensorsLoader;
-        let ir = loader.load(f.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &LoadOptions::default(), &ProgressCallback::noop())
+            .unwrap();
         assert_eq!(ir.tensors.get("w").unwrap().dtype, DType::BF16);
     }
 
@@ -270,7 +283,8 @@ mod tests {
         let header_str = header.to_string();
         let mut f = NamedTempFile::new().unwrap();
         use std::io::Write;
-        f.write_all(&(header_str.len() as u64).to_le_bytes()).unwrap();
+        f.write_all(&(header_str.len() as u64).to_le_bytes())
+            .unwrap();
         f.write_all(header_str.as_bytes()).unwrap();
         f.write_all(&[0u8; 4]).unwrap(); // Only 4 bytes, not 40000
         f.flush().unwrap();
@@ -286,7 +300,9 @@ mod tests {
         let loader = SafeTensorsLoader;
         let mut opts = LoadOptions::default();
         opts.metadata_only = true;
-        let ir = loader.load(f.path(), &opts, &ProgressCallback::noop()).unwrap();
+        let ir = loader
+            .load(f.path(), &opts, &ProgressCallback::noop())
+            .unwrap();
         assert!(ir.tensors.is_empty());
     }
 }

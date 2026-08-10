@@ -1,37 +1,39 @@
-use std::path::Path;
-use std::io::{BufWriter, Write};
-use umc_core::{
-    UmcError, UniversalIR, DType,
-    FormatSaver, SaveOptions, ProgressCallback,
-    UMC_VERSION,
-};
 use crate::gguf::kquant::kquant_to_f32_bytes;
 use serde_json::{json, Value};
+use std::io::{BufWriter, Write};
+use std::path::Path;
+use umc_core::{
+    DType, FormatSaver, ProgressCallback, SaveOptions, UmcError, UniversalIR, UMC_VERSION,
+};
 
 /// Maps UMC DType to SafeTensors dtype string.
 fn dtype_to_st_str(dtype: &DType) -> Option<&'static str> {
     match dtype {
-        DType::F64  => Some("F64"),
-        DType::F32  => Some("F32"),
-        DType::F16  => Some("F16"),
+        DType::F64 => Some("F64"),
+        DType::F32 => Some("F32"),
+        DType::F16 => Some("F16"),
         DType::BF16 => Some("BF16"),
-        DType::I64  => Some("I64"),
-        DType::I32  => Some("I32"),
-        DType::I16  => Some("I16"),
-        DType::I8   => Some("I8"),
-        DType::U64  => Some("U64"),
-        DType::U32  => Some("U32"),
-        DType::U16  => Some("U16"),
-        DType::U8   => Some("U8"),
+        DType::I64 => Some("I64"),
+        DType::I32 => Some("I32"),
+        DType::I16 => Some("I16"),
+        DType::I8 => Some("I8"),
+        DType::U64 => Some("U64"),
+        DType::U32 => Some("U32"),
+        DType::U16 => Some("U16"),
+        DType::U8 => Some("U8"),
         DType::Bool => Some("BOOL"),
         DType::F8E4M3 => Some("F8_E4M3"),
         DType::F8E5M2 => Some("F8_E5M2"),
-        _ => None,  // Quantized types not directly representable
+        _ => None, // Quantized types not directly representable
     }
 }
 
 /// Dequantize a tensor to F32 bytes (for quantized → SafeTensors conversion).
-fn dequantize_to_f32(tensor_data: &[u8], dtype: &DType, shape: &[usize]) -> Result<Vec<u8>, UmcError> {
+fn dequantize_to_f32(
+    tensor_data: &[u8],
+    dtype: &DType,
+    shape: &[usize],
+) -> Result<Vec<u8>, UmcError> {
     let n_elems: usize = shape.iter().product::<usize>().max(1);
     let mut output = vec![0u8; n_elems * 4];
 
@@ -41,7 +43,9 @@ fn dequantize_to_f32(tensor_data: &[u8], dtype: &DType, shape: &[usize]) -> Resu
             let block_size: usize = 32;
             let bytes_per_block: usize = 18;
             for (block_idx, block) in tensor_data.chunks(bytes_per_block).enumerate() {
-                if block.len() < bytes_per_block { break; }
+                if block.len() < bytes_per_block {
+                    break;
+                }
                 let scale_bits = u16::from_le_bytes([block[0], block[1]]);
                 let scale = f16_to_f32(scale_bits);
                 let quant_bytes = &block[2..18];
@@ -52,11 +56,11 @@ fn dequantize_to_f32(tensor_data: &[u8], dtype: &DType, shape: &[usize]) -> Resu
                     let idx1 = idx0 + 1;
                     if idx0 < n_elems {
                         let v = (lo as f32) * scale;
-                        output[idx0*4..(idx0+1)*4].copy_from_slice(&v.to_le_bytes());
+                        output[idx0 * 4..(idx0 + 1) * 4].copy_from_slice(&v.to_le_bytes());
                     }
                     if idx1 < n_elems {
                         let v = (hi as f32) * scale;
-                        output[idx1*4..(idx1+1)*4].copy_from_slice(&v.to_le_bytes());
+                        output[idx1 * 4..(idx1 + 1) * 4].copy_from_slice(&v.to_le_bytes());
                     }
                 }
             }
@@ -66,32 +70,40 @@ fn dequantize_to_f32(tensor_data: &[u8], dtype: &DType, shape: &[usize]) -> Resu
             let block_size: usize = 32;
             let bytes_per_block: usize = 34;
             for (block_idx, block) in tensor_data.chunks(bytes_per_block).enumerate() {
-                if block.len() < bytes_per_block { break; }
+                if block.len() < bytes_per_block {
+                    break;
+                }
                 let scale_bits = u16::from_le_bytes([block[0], block[1]]);
                 let scale = f16_to_f32(scale_bits);
                 for (i, &byte) in block[2..].iter().enumerate() {
                     let idx = block_idx * block_size + i;
                     if idx < n_elems {
                         let v = (byte as i8 as f32) * scale;
-                        output[idx*4..(idx+1)*4].copy_from_slice(&v.to_le_bytes());
+                        output[idx * 4..(idx + 1) * 4].copy_from_slice(&v.to_le_bytes());
                     }
                 }
             }
         }
         // K-quant types: full block-level decode
-        DType::Q2K | DType::Q3KS | DType::Q3KM | DType::Q3KL |
-        DType::Q4KS | DType::Q4KM |
-        DType::Q5KS | DType::Q5KM |
-        DType::Q6K  | DType::Q8K => {
+        DType::Q2K
+        | DType::Q3KS
+        | DType::Q3KM
+        | DType::Q3KL
+        | DType::Q4KS
+        | DType::Q4KM
+        | DType::Q5KS
+        | DType::Q5KM
+        | DType::Q6K
+        | DType::Q8K => {
             return kquant_to_f32_bytes(tensor_data, dtype, n_elems);
         }
         // F16 → F32 upcasting
         DType::F16 => {
             for i in 0..n_elems {
                 if i * 2 + 1 < tensor_data.len() {
-                    let bits = u16::from_le_bytes([tensor_data[i*2], tensor_data[i*2+1]]);
+                    let bits = u16::from_le_bytes([tensor_data[i * 2], tensor_data[i * 2 + 1]]);
                     let v = f16_to_f32(bits);
-                    output[i*4..(i+1)*4].copy_from_slice(&v.to_le_bytes());
+                    output[i * 4..(i + 1) * 4].copy_from_slice(&v.to_le_bytes());
                 }
             }
         }
@@ -99,9 +111,9 @@ fn dequantize_to_f32(tensor_data: &[u8], dtype: &DType, shape: &[usize]) -> Resu
         DType::BF16 => {
             for i in 0..n_elems {
                 if i * 2 + 1 < tensor_data.len() {
-                    let bits = u16::from_le_bytes([tensor_data[i*2], tensor_data[i*2+1]]);
+                    let bits = u16::from_le_bytes([tensor_data[i * 2], tensor_data[i * 2 + 1]]);
                     let v = bf16_to_f32(bits);
-                    output[i*4..(i+1)*4].copy_from_slice(&v.to_le_bytes());
+                    output[i * 4..(i + 1) * 4].copy_from_slice(&v.to_le_bytes());
                 }
             }
         }
@@ -124,7 +136,10 @@ fn f16_to_f32(bits: u16) -> f32 {
         } else {
             let mut e = 0u32;
             let mut m = mant;
-            while m & 0x0400 == 0 { m <<= 1; e += 1; }
+            while m & 0x0400 == 0 {
+                m <<= 1;
+                e += 1;
+            }
             let normalized_exp = 127 - 15 - e + 1;
             sign | (normalized_exp << 23) | ((m & 0x03ff) << 13)
         }
@@ -146,8 +161,12 @@ fn bf16_to_f32(bits: u16) -> f32 {
 pub struct SafeTensorsSaver;
 
 impl FormatSaver for SafeTensorsSaver {
-    fn format_name(&self) -> &'static str { "SafeTensors" }
-    fn default_extension(&self) -> &'static str { "safetensors" }
+    fn format_name(&self) -> &'static str {
+        "SafeTensors"
+    }
+    fn default_extension(&self) -> &'static str {
+        "safetensors"
+    }
 
     fn save(
         &self,
@@ -202,9 +221,8 @@ impl SafeTensorsSaver {
 
         // ── Phase 1: Sorted tensor list + output dtype/size metadata ──────
         // No data is loaded or copied here — only shapes and dtype strings.
-        let mut tensor_list: Vec<(&str, &umc_core::Tensor)> = ir.tensors.iter()
-            .map(|(n, t)| (n.as_str(), t))
-            .collect();
+        let mut tensor_list: Vec<(&str, &umc_core::Tensor)> =
+            ir.tensors.iter().map(|(n, t)| (n.as_str(), t)).collect();
         tensor_list.sort_by_key(|(n, _)| *n);
         progress.set_total(tensor_list.len() as u64);
 
@@ -228,7 +246,12 @@ impl SafeTensorsSaver {
                 let n_elems: usize = tensor.shape.iter().product();
                 ("F32", (n_elems * 4) as u64)
             };
-            meta.push(TensorMeta { name, tensor, st_dtype_str: st_str, byte_len });
+            meta.push(TensorMeta {
+                name,
+                tensor,
+                st_dtype_str: st_str,
+                byte_len,
+            });
         }
 
         // ── Phase 2: Build JSON header from sizes (no data copy) ──────────
@@ -236,35 +259,47 @@ impl SafeTensorsSaver {
         let mut data_offset: u64 = 0;
         for m in &meta {
             let end = data_offset + m.byte_len;
-            header_map.insert(m.name.to_string(), json!({
-                "dtype": m.st_dtype_str,
-                "shape": m.tensor.shape,
-                "data_offsets": [data_offset, end],
-            }));
+            header_map.insert(
+                m.name.to_string(),
+                json!({
+                    "dtype": m.st_dtype_str,
+                    "shape": m.tensor.shape,
+                    "data_offsets": [data_offset, end],
+                }),
+            );
             data_offset = end;
         }
-        header_map.insert("__metadata__".into(), json!({
-            "umc_version": UMC_VERSION,
-            "source_format": ir.provenance.last_entry()
-                .map(|e| e.source_format.as_str()).unwrap_or("unknown"),
-            "architecture": ir.architecture.architecture,
-        }));
-        let header_json = serde_json::to_string(&Value::Object(header_map))
-            .map_err(UmcError::Json)?;
+        header_map.insert(
+            "__metadata__".into(),
+            json!({
+                "umc_version": UMC_VERSION,
+                "source_format": ir.provenance.last_entry()
+                    .map(|e| e.source_format.as_str()).unwrap_or("unknown"),
+                "architecture": ir.architecture.architecture,
+            }),
+        );
+        let header_json =
+            serde_json::to_string(&Value::Object(header_map)).map_err(UmcError::Json)?;
 
         // ── Phase 3: Open file, write header ─────────────────────────────
         let file = std::fs::File::create(path).map_err(UmcError::Io)?;
         let mut writer = BufWriter::with_capacity(8 * 1024 * 1024, file);
-        writer.write_all(&(header_json.len() as u64).to_le_bytes()).map_err(UmcError::Io)?;
-        writer.write_all(header_json.as_bytes()).map_err(UmcError::Io)?;
+        writer
+            .write_all(&(header_json.len() as u64).to_le_bytes())
+            .map_err(UmcError::Io)?;
+        writer
+            .write_all(header_json.as_bytes())
+            .map_err(UmcError::Io)?;
 
         // ── Phase 4: Stream each tensor — dequantize, write, discard ─────
         // Peak RAM = max(single tensor F32 size), not total model size.
         progress.report("Streaming tensor data…");
         for m in &meta {
-            let raw = m.tensor.data.as_bytes().map_err(|e| {
-                UmcError::Other(format!("Tensor '{}': {}", m.name, e))
-            })?;
+            let raw = m
+                .tensor
+                .data
+                .as_bytes()
+                .map_err(|e| UmcError::Other(format!("Tensor '{}': {}", m.name, e)))?;
 
             if dtype_to_st_str(&m.tensor.dtype).is_some() {
                 writer.write_all(raw).map_err(UmcError::Io)?;
@@ -285,14 +320,16 @@ impl SafeTensorsSaver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umc_core::{Tensor, UniversalIR};
     use std::path::Path;
     use tempfile::NamedTempFile;
+    use umc_core::{Tensor, UniversalIR};
 
     fn make_f32_ir() -> UniversalIR {
         let mut ir = UniversalIR::new("GGUF", Path::new("test.gguf"));
         let data: Vec<u8> = vec![0.0f32, 1.0f32, 2.0f32, 3.0f32]
-            .iter().flat_map(|f: &f32| f.to_le_bytes()).collect();
+            .iter()
+            .flat_map(|f: &f32| f.to_le_bytes())
+            .collect();
         let t = Tensor::from_bytes("linear.weight", DType::F32, vec![2, 2], data);
         ir.tensors.insert(t).unwrap();
         ir
@@ -303,7 +340,14 @@ mod tests {
         let ir = make_f32_ir();
         let f = NamedTempFile::new().unwrap();
         let saver = SafeTensorsSaver;
-        saver.save(&ir, f.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        saver
+            .save(
+                &ir,
+                f.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         // Verify the file has valid SafeTensors header
         let bytes = std::fs::read(f.path()).unwrap();
@@ -332,11 +376,18 @@ mod tests {
         let ir = make_f32_ir();
         let f = NamedTempFile::new().unwrap();
         let saver = SafeTensorsSaver;
-        saver.save(&ir, f.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        saver
+            .save(
+                &ir,
+                f.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         let bytes = std::fs::read(f.path()).unwrap();
         let header_size = u64::from_le_bytes(bytes[0..8].try_into().unwrap()) as usize;
-        let header_json = std::str::from_utf8(&bytes[8..8+header_size]).unwrap();
+        let header_json = std::str::from_utf8(&bytes[8..8 + header_size]).unwrap();
         let header: serde_json::Value = serde_json::from_str(header_json).unwrap();
         assert!(header.get("linear.weight").is_some());
         assert_eq!(header["linear.weight"]["dtype"], "F32");

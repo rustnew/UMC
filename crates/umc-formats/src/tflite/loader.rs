@@ -1,17 +1,19 @@
+use super::flatbuf::parse_tflite;
+use memmap2::Mmap;
 use std::path::Path;
 use std::sync::Arc;
-use memmap2::Mmap;
-use umc_core::{UmcError, UniversalIR, Tensor};
-use umc_core::ir::{MetaValue, GraphContent};
-use umc_core::UMC_VERSION;
 use umc_core::ir::provenance::ProvenanceEntryData;
+use umc_core::ir::{GraphContent, MetaValue};
+use umc_core::UMC_VERSION;
 use umc_core::{FormatLoader, LoadOptions, ProgressCallback};
-use super::flatbuf::parse_tflite;
+use umc_core::{Tensor, UmcError, UniversalIR};
 
 pub struct TFLiteLoader;
 
 impl FormatLoader for TFLiteLoader {
-    fn format_name(&self) -> &'static str { "TFLite" }
+    fn format_name(&self) -> &'static str {
+        "TFLite"
+    }
 
     fn can_load(&self, path: &Path) -> bool {
         if path.extension().map_or(false, |e| e == "tflite") {
@@ -19,15 +21,23 @@ impl FormatLoader for TFLiteLoader {
         }
         // Check FlatBuffer magic at bytes 4..8
         use std::io::Read;
-        let mut f = match std::fs::File::open(path) { Ok(f) => f, Err(_) => return false };
+        let mut f = match std::fs::File::open(path) {
+            Ok(f) => f,
+            Err(_) => return false,
+        };
         let mut buf = [0u8; 8];
-        if f.read_exact(&mut buf).is_err() { return false; }
+        if f.read_exact(&mut buf).is_err() {
+            return false;
+        }
         matches!(&buf[4..8], b"TFL3" | b"TFL2" | b"TFL1")
     }
 
-    fn load(&self, path: &Path, _opts: &LoadOptions, progress: &ProgressCallback)
-        -> Result<UniversalIR, UmcError>
-    {
+    fn load(
+        &self,
+        path: &Path,
+        _opts: &LoadOptions,
+        progress: &ProgressCallback,
+    ) -> Result<UniversalIR, UmcError> {
         // mmap the file
         let file = std::fs::File::open(path).map_err(UmcError::Io)?;
         let mmap = unsafe { Mmap::map(&file) }.map_err(|e| UmcError::Mmap {
@@ -36,12 +46,14 @@ impl FormatLoader for TFLiteLoader {
         })?;
         let mmap = Arc::new(mmap);
 
-        let model = parse_tflite(&mmap[..])
-            .map_err(|e| UmcError::Other(format!("TFLite parse: {}", e)))?;
+        let model =
+            parse_tflite(&mmap[..]).map_err(|e| UmcError::Other(format!("TFLite parse: {}", e)))?;
 
         let mut ir = UniversalIR::new("TFLite", path);
-        ir.metadata.insert("source_format", MetaValue::String("TFLite".into()));
-        ir.metadata.insert("tensor_count", MetaValue::I64(model.tensors.len() as i64));
+        ir.metadata
+            .insert("source_format", MetaValue::String("TFLite".into()));
+        ir.metadata
+            .insert("tensor_count", MetaValue::I64(model.tensors.len() as i64));
 
         progress.set_total(model.tensors.len() as u64);
 
@@ -51,11 +63,12 @@ impl FormatLoader for TFLiteLoader {
             let elem_bytes = tf_tensor.dtype.bytes_per_element().unwrap_or(4.0) as usize;
             let expected_bytes = n_elems * elem_bytes;
 
-            let buf = model.buffers.get(tf_tensor.buffer_idx)
-                .ok_or_else(|| UmcError::Other(format!(
+            let buf = model.buffers.get(tf_tensor.buffer_idx).ok_or_else(|| {
+                UmcError::Other(format!(
                     "TFLite: tensor '{}' references buffer {} which does not exist",
                     tf_tensor.name, tf_tensor.buffer_idx
-                )))?;
+                ))
+            })?;
 
             // Skip empty buffers (e.g. graph inputs/outputs with no weights)
             if buf.is_empty() && n_elems > 0 {
@@ -67,10 +80,10 @@ impl FormatLoader for TFLiteLoader {
             } else {
                 buf.clone()
             };
-            let tensor = Tensor::from_bytes(
-                tf_tensor.name.clone(), tf_tensor.dtype.clone(), shape, raw,
-            );
-            ir.tensors.insert(tensor)
+            let tensor =
+                Tensor::from_bytes(tf_tensor.name.clone(), tf_tensor.dtype.clone(), shape, raw);
+            ir.tensors
+                .insert(tensor)
                 .map_err(|e| UmcError::Other(e.to_string()))?;
             progress.increment(&tf_tensor.name);
         }
@@ -82,7 +95,9 @@ impl FormatLoader for TFLiteLoader {
         };
 
         let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         ir.provenance.append(ProvenanceEntryData {
             timestamp,
             source_format: "TFLite".into(),
@@ -101,8 +116,8 @@ impl FormatLoader for TFLiteLoader {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::saver::TFLiteSaver;
+    use super::*;
 
     #[test]
     fn test_tflite_can_load_extension() {
@@ -113,20 +128,40 @@ mod tests {
 
     #[test]
     fn test_tflite_round_trip() {
-        use umc_core::{FormatSaver, SaveOptions, Tensor};
         use tempfile::NamedTempFile;
+        use umc_core::{FormatSaver, SaveOptions, Tensor};
 
         let mut ir = UniversalIR::new("test", std::path::Path::new("model.tflite"));
         let data: Vec<f32> = (0..16).map(|i| i as f32).collect();
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        ir.tensors.insert(Tensor::from_bytes("dense/kernel", umc_core::DType::F32, vec![4, 4], bytes.clone())).unwrap();
+        ir.tensors
+            .insert(Tensor::from_bytes(
+                "dense/kernel",
+                umc_core::DType::F32,
+                vec![4, 4],
+                bytes.clone(),
+            ))
+            .unwrap();
 
         let saver = TFLiteSaver;
         let tmp = NamedTempFile::new().unwrap();
-        saver.save(&ir, tmp.path(), &SaveOptions::default(), &ProgressCallback::noop()).unwrap();
+        saver
+            .save(
+                &ir,
+                tmp.path(),
+                &SaveOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
 
         let loader = TFLiteLoader;
-        let loaded = loader.load(tmp.path(), &LoadOptions::default(), &ProgressCallback::noop()).unwrap();
+        let loaded = loader
+            .load(
+                tmp.path(),
+                &LoadOptions::default(),
+                &ProgressCallback::noop(),
+            )
+            .unwrap();
         assert_eq!(loaded.tensors.len(), 1);
         let t = loaded.tensors.get("dense/kernel").unwrap();
         assert_eq!(t.shape, vec![4, 4]);

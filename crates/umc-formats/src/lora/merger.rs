@@ -3,7 +3,7 @@
 /// Used when saving to formats that don't natively support LoRA (GGUF, ONNX, TFLite).
 use std::collections::HashMap;
 use std::sync::Arc;
-use umc_core::{DType, UmcError, UniversalIR, Tensor, TensorData};
+use umc_core::{DType, Tensor, TensorData, UmcError, UniversalIR};
 
 /// Merge all LoRA adapters from `adapter_ir` into `base_ir`.
 /// Modifies base_ir tensors in-place.
@@ -24,9 +24,13 @@ pub fn merge_lora_into_base(
 
         for (layer_name, (key_a, key_b)) in &pairs {
             // Get raw bytes for lora_A and lora_B
-            let a_bytes = adapter.tensors.get(key_a)
+            let a_bytes = adapter
+                .tensors
+                .get(key_a)
                 .ok_or_else(|| UmcError::Other(format!("LoRA: lora_A '{}' not found", key_a)))?;
-            let b_bytes = adapter.tensors.get(key_b)
+            let b_bytes = adapter
+                .tensors
+                .get(key_b)
                 .ok_or_else(|| UmcError::Other(format!("LoRA: lora_B '{}' not found", key_b)))?;
 
             // Get base weight tensor
@@ -79,7 +83,9 @@ pub fn merge_lora_into_base(
             }
 
             // Add delta to base weight
-            let base_bytes = base_tensor.data.as_bytes()
+            let base_bytes = base_tensor
+                .data
+                .as_bytes()
                 .map_err(|e| UmcError::Other(format!("LoRA merge: {}", e)))?;
             let mut base_f32 = bytes_to_f32_vec(base_bytes);
 
@@ -92,9 +98,7 @@ pub fn merge_lora_into_base(
                 *w += d;
             }
 
-            let new_bytes: Vec<u8> = base_f32.iter()
-                .flat_map(|f| f.to_le_bytes())
-                .collect();
+            let new_bytes: Vec<u8> = base_f32.iter().flat_map(|f| f.to_le_bytes()).collect();
             base_tensor.data = TensorData::Owned(Arc::new(new_bytes));
             stats.merged += 1;
         }
@@ -114,14 +118,17 @@ pub struct MergeStats {
 }
 
 fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
-    bytes.chunks_exact(4)
+    bytes
+        .chunks_exact(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect()
 }
 
 /// Find lora_A / lora_B pairs in adapter tensors.
 /// Returns: HashMap<layer_name, (key_A, key_B)>
-fn find_lora_pairs(tensors: &indexmap::IndexMap<String, Vec<u8>>) -> HashMap<String, (String, String)> {
+fn find_lora_pairs(
+    tensors: &indexmap::IndexMap<String, Vec<u8>>,
+) -> HashMap<String, (String, String)> {
     let mut pairs: HashMap<String, (String, String)> = HashMap::new();
     let mut a_keys: HashMap<String, String> = HashMap::new();
     let mut b_keys: HashMap<String, String> = HashMap::new();
@@ -171,7 +178,15 @@ mod tests {
         let base_bytes: Vec<u8> = base_data.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         let mut base_ir = UniversalIR::new("base", std::path::Path::new("base.safetensors"));
-        base_ir.tensors.insert(Tensor::from_bytes("linear.weight", DType::F32, vec![2, 3], base_bytes)).unwrap();
+        base_ir
+            .tensors
+            .insert(Tensor::from_bytes(
+                "linear.weight",
+                DType::F32,
+                vec![2, 3],
+                base_bytes,
+            ))
+            .unwrap();
 
         // lora_A: [2×3] = [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]
         let a_data: Vec<f32> = vec![0.1, 0.0, 0.0, 0.0, 0.1, 0.0];

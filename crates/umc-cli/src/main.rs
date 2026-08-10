@@ -1,10 +1,10 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use umc_core::FormatLoader;
 use umc_core::{LoadOptions, UMC_VERSION};
 use umc_detect::FormatRegistry;
 use umc_formats::{GgufLoader, SafeTensorsLoader};
-use umc_core::FormatLoader;
-use umc_graph::{ConversionGraph, find_path};
+use umc_graph::{find_path, ConversionGraph};
 use umc_pipeline::{ConversionPipeline, ConversionRequest};
 use umc_validate::ValidationMode;
 
@@ -104,7 +104,7 @@ fn main() {
 }
 
 fn init_logging(verbose: bool) {
-    use tracing_subscriber::{EnvFilter, fmt};
+    use tracing_subscriber::{fmt, EnvFilter};
     let filter = if verbose {
         EnvFilter::new("umc=debug")
     } else {
@@ -119,19 +119,22 @@ fn init_logging(verbose: bool) {
 fn run(cmd: Commands) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
         Commands::Convert {
-            input, output, from, to, dtype, validate, metadata_only
-        } => {
-            cmd_convert(input, output, from, to, dtype, validate, metadata_only)
-        }
-        Commands::Inspect { file, format, output, max_tensors } => {
-            cmd_inspect(file, format, output, max_tensors)
-        }
-        Commands::Formats => {
-            cmd_formats()
-        }
-        Commands::Path { from, to } => {
-            cmd_path(from, to)
-        }
+            input,
+            output,
+            from,
+            to,
+            dtype,
+            validate,
+            metadata_only,
+        } => cmd_convert(input, output, from, to, dtype, validate, metadata_only),
+        Commands::Inspect {
+            file,
+            format,
+            output,
+            max_tensors,
+        } => cmd_inspect(file, format, output, max_tensors),
+        Commands::Formats => cmd_formats(),
+        Commands::Path { from, to } => cmd_path(from, to),
     }
 }
 
@@ -147,10 +150,10 @@ fn cmd_convert(
     metadata_only: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let validation_mode = match validate.as_str() {
-        "none"       => ValidationMode::None,
+        "none" => ValidationMode::None,
         "structural" => ValidationMode::Structural,
-        "numeric"    => ValidationMode::Numeric,
-        "strict"     => ValidationMode::Strict,
+        "numeric" => ValidationMode::Numeric,
+        "strict" => ValidationMode::Strict,
         other => {
             eprintln!("Unknown validation mode '{}'. Using 'structural'.", other);
             ValidationMode::Structural
@@ -211,7 +214,7 @@ fn cmd_inspect(
     };
 
     let loader: Box<dyn FormatLoader> = match detected.as_str() {
-        "GGUF"        => Box::new(GgufLoader),
+        "GGUF" => Box::new(GgufLoader),
         "SafeTensors" => Box::new(SafeTensorsLoader),
         other => {
             return Err(format!("No loader for format '{}'", other).into());
@@ -243,7 +246,10 @@ fn print_inspect_text(ir: &umc_core::UniversalIR, format: &str, max_tensors: usi
         println!("  KV heads:      {}", kv);
     }
     println!("  Vocab size:    {}", ir.architecture.vocab_size);
-    println!("  Max context:   {}", ir.architecture.max_position_embeddings);
+    println!(
+        "  Max context:   {}",
+        ir.architecture.max_position_embeddings
+    );
     println!("  Tensors:       {}", ir.tensors.len());
     println!("  Parameters:    {:.2}B", ir.num_parameters() as f64 / 1e9);
     println!("  RAM usage:     {:.1} MiB", ir.tensors.ram_usage_mb());
@@ -260,7 +266,11 @@ fn print_inspect_text(ir: &umc_core::UniversalIR, format: &str, max_tensors: usi
         println!("  … and {} more entries", ir.metadata.len() - 30);
     }
 
-    println!("\n\x1b[1mTensors\x1b[0m (showing {} of {})", max_tensors.min(ir.tensors.len()), ir.tensors.len());
+    println!(
+        "\n\x1b[1mTensors\x1b[0m (showing {} of {})",
+        max_tensors.min(ir.tensors.len()),
+        ir.tensors.len()
+    );
     for (name, tensor) in ir.tensors.iter().take(max_tensors) {
         let shape_str: Vec<String> = tensor.shape.iter().map(|d| d.to_string()).collect();
         println!(
@@ -281,14 +291,18 @@ fn print_inspect_json(
     format: &str,
     max_tensors: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let tensors: Vec<serde_json::Value> = ir.tensors.iter()
+    let tensors: Vec<serde_json::Value> = ir
+        .tensors
+        .iter()
         .take(max_tensors)
-        .map(|(name, t)| serde_json::json!({
-            "name": name,
-            "dtype": t.dtype.as_str(),
-            "shape": t.shape,
-            "num_elements": t.num_elements(),
-        }))
+        .map(|(name, t)| {
+            serde_json::json!({
+                "name": name,
+                "dtype": t.dtype.as_str(),
+                "shape": t.shape,
+                "num_elements": t.num_elements(),
+            })
+        })
         .collect();
 
     let output = serde_json::json!({
@@ -311,21 +325,44 @@ fn print_inspect_json(
 
 fn cmd_formats() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\x1b[1mUMC Supported Formats\x1b[0m\n");
-    println!("  {:<20} {:<12} {:<12} {}", "Format", "Load", "Save", "Notes");
+    println!(
+        "  {:<20} {:<12} {:<12} {}",
+        "Format", "Load", "Save", "Notes"
+    );
     println!("  {}", "-".repeat(70));
 
     let formats = [
-        ("GGUF",        "✓ native", "planned", "GGUF v1/v2/v3, all quant types"),
-        ("SafeTensors", "✓ native", "✓ native", "HuggingFace SafeTensors"),
-        ("ONNX",        "planned",  "planned",  "ONNX opset 13-21"),
-        ("PyTorch",     "planned",  "planned",  "PyTorch .pt/.pth (safe pickle)"),
-        ("TFLite",      "planned",  "planned",  "TFLite FlatBuffers"),
-        ("KerasH5",     "planned",  "—",        "Keras H5 (read-only)"),
-        ("GGML",        "planned",  "—",        "Legacy GGML (read-only)"),
-        ("TFSavedModel","planned",  "planned",  "TensorFlow SavedModel"),
-        ("AWQ",         "planned",  "—",        "AWQ quantized models"),
-        ("GPTQ",        "planned",  "—",        "GPTQ quantized models"),
-        ("Diffusers",   "planned",  "planned",  "HuggingFace Diffusers"),
+        (
+            "GGUF",
+            "✓ native",
+            "planned",
+            "GGUF v1/v2/v3, all quant types",
+        ),
+        (
+            "SafeTensors",
+            "✓ native",
+            "✓ native",
+            "HuggingFace SafeTensors",
+        ),
+        ("ONNX", "planned", "planned", "ONNX opset 13-21"),
+        (
+            "PyTorch",
+            "planned",
+            "planned",
+            "PyTorch .pt/.pth (safe pickle)",
+        ),
+        ("TFLite", "planned", "planned", "TFLite FlatBuffers"),
+        ("KerasH5", "planned", "—", "Keras H5 (read-only)"),
+        ("GGML", "planned", "—", "Legacy GGML (read-only)"),
+        (
+            "TFSavedModel",
+            "planned",
+            "planned",
+            "TensorFlow SavedModel",
+        ),
+        ("AWQ", "planned", "—", "AWQ quantized models"),
+        ("GPTQ", "planned", "—", "GPTQ quantized models"),
+        ("Diffusers", "planned", "planned", "HuggingFace Diffusers"),
     ];
 
     for (name, load, save, notes) in &formats {
@@ -344,11 +381,29 @@ fn cmd_path(from: String, to: String) -> Result<(), Box<dyn std::error::Error>> 
     println!("\n\x1b[1mConversion path: {} → {}\x1b[0m", from, to);
     println!("  Hops:       {}", path.hop_count());
     println!("  Total cost: {:.1}s (estimated)", path.total_cost);
-    println!("  All native: {}", if path.all_native() { "yes" } else { "no (external tool required)" });
+    println!(
+        "  All native: {}",
+        if path.all_native() {
+            "yes"
+        } else {
+            "no (external tool required)"
+        }
+    );
     println!("\n  Steps:");
     for (i, hop) in path.hops.iter().enumerate() {
-        let native_tag = if hop.native { "\x1b[32m[native]\x1b[0m" } else { "\x1b[33m[external]\x1b[0m" };
-        println!("    {}. {} → {}  {}  {}", i+1, hop.source, hop.target, native_tag, hop.description);
+        let native_tag = if hop.native {
+            "\x1b[32m[native]\x1b[0m"
+        } else {
+            "\x1b[33m[external]\x1b[0m"
+        };
+        println!(
+            "    {}. {} → {}  {}  {}",
+            i + 1,
+            hop.source,
+            hop.target,
+            native_tag,
+            hop.description
+        );
     }
     println!();
     Ok(())

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use umc_core::UMC_VERSION;
 
 /// A conversion certificate — cryptographically signed report of a conversion.
@@ -67,15 +67,18 @@ impl CertificateBuilder {
     }
 
     pub fn source(mut self, info: CertFileInfo) -> Self {
-        self.source = Some(info); self
+        self.source = Some(info);
+        self
     }
 
     pub fn target(mut self, info: CertFileInfo) -> Self {
-        self.target = Some(info); self
+        self.target = Some(info);
+        self
     }
 
     pub fn structural_passed(mut self, passed: bool) -> Self {
-        self.structural_passed = passed; self
+        self.structural_passed = passed;
+        self
     }
 
     pub fn numeric_passed(mut self, passed: bool, max_divergence: f64) -> Self {
@@ -85,11 +88,13 @@ impl CertificateBuilder {
     }
 
     pub fn roundtrip_level(mut self, level: impl Into<String>) -> Self {
-        self.roundtrip_level = level.into(); self
+        self.roundtrip_level = level.into();
+        self
     }
 
     pub fn add_warning(mut self, w: impl Into<String>) -> Self {
-        self.warnings.push(w.into()); self
+        self.warnings.push(w.into());
+        self
     }
 
     /// Build the certificate. Returns None if not all validations passed.
@@ -109,21 +114,16 @@ impl CertificateBuilder {
             .unwrap_or_default()
             .as_secs();
 
-        let mut guarantees = vec![
-            Guarantee {
-                guarantee_type: "structural_integrity".into(),
-                description: "All tensors preserved with correct shapes and dtypes".into(),
-                verified: self.structural_passed,
-            },
-        ];
+        let mut guarantees = vec![Guarantee {
+            guarantee_type: "structural_integrity".into(),
+            description: "All tensors preserved with correct shapes and dtypes".into(),
+            verified: self.structural_passed,
+        }];
 
         if let Some(np) = self.numeric_passed {
             guarantees.push(Guarantee {
                 guarantee_type: "numeric_precision".into(),
-                description: format!(
-                    "Max divergence: {:.2e}",
-                    self.max_divergence.unwrap_or(0.0)
-                ),
+                description: format!("Max divergence: {:.2e}", self.max_divergence.unwrap_or(0.0)),
                 verified: np,
             });
         }
@@ -167,7 +167,9 @@ pub fn sha256_file(path: &std::path::Path) -> std::io::Result<String> {
     let mut buf = vec![0u8; 64 * 1024];
     loop {
         let n = file.read(&mut buf)?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         hasher.update(&buf[..n]);
     }
     Ok(hex::encode(hasher.finalize()))
