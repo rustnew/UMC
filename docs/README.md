@@ -64,8 +64,7 @@ docker compose up -d --build
 
 ## API
 
-The REST API is served by `umc-api` (Actix-Web). See
-[API Reference](../README.md#api-reference) in the README.
+The REST API is served by `umc-api` (Actix-Web).
 
 - `GET /health` — liveness probe
 - `GET /ready` — readiness probe

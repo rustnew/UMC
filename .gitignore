@@ -19,6 +19,9 @@
 target/
 **/target/
 
+# ─── Packages de release ───
+dist/
+
 # ─── Fichiers sensibles ───
 .env
 .env.local
