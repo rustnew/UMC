@@ -13,7 +13,7 @@
 
 Instead, report privately via GitHub's **Security Advisories**:
 
-1. Go to https://github.com/rustnew/Universal_Model_Convert/security/advisories
+1. Go to https://github.com/rustnew/UMC/security/advisories
 2. Click **"New draft security advisory"**
 3. Describe the vulnerability, affected versions, and impact
 

@@ -4,21 +4,19 @@
 
 **Convert AI models between formats. Fast. Lossless. Verifiable.**
 
-UMC is an open-source model conversion platform written in Rust. It converts
-models between 12 formats (GGUF, ONNX, SafeTensors, PyTorch, TFLite, AWQ,
-GPTQ, LoRA, CoreML, ExecuTorch, OpenVINO, TensorRT) through a single
-**Universal Intermediate Representation (IR)** — no Python, no GIL, no
-runtime overhead.
+UMC is an open-source model conversion tool written in Rust. It converts
+models between formats (GGUF, SafeTensors, ONNX, PyTorch, TFLite, ...)
+through a single **Universal Intermediate Representation (IR)** — no Python,
+no GIL, no runtime overhead.
 
 ---
 
 [![CI](https://github.com/rustnew/UMC/actions/workflows/ci.yml/badge.svg)](https://github.com/rustnew/UMC/actions)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.80-orange.svg?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
 [![Stars](https://img.shields.io/github/stars/rustnew/UMC?style=social)](https://github.com/rustnew/UMC)
 
-[**Quick Start**](#quick-start) · [**Formats**](#supported-formats) · [**CLI**](#cli-reference) · [**API**](#api-reference) · [**Docs**](docs/README.md)
+[**Quick Start**](#quick-start) · [**Desktop App**](#desktop-app) · [**Formats**](#supported-formats) · [**CLI**](#cli-reference) · [**Docs**](docs/README.md)
 
 </div>
 
@@ -42,8 +40,9 @@ $ umc convert model.gguf model.onnx
 
 ## Key Features
 
-- **12 formats** — GGUF, ONNX, SafeTensors, PyTorch, TFLite, AWQ, GPTQ, LoRA
-  (native) + CoreML, ExecuTorch, OpenVINO, TensorRT (external tooling).
+- **Desktop app** — native cross-platform GUI (egui/eframe) for local
+  drag-and-drop conversions, with progress bar, cancellation, history and
+  settings.
 - **Universal IR** — a single intermediate representation; converting A→B
   is always `load(A) → IR → save(B)`, never a fragile A→B converter.
 - **Automatic format detection** — 13 detectors using magic bytes, headers
@@ -57,10 +56,8 @@ $ umc convert model.gguf model.onnx
 - **Memory-mapped I/O** — models are streamed, never fully loaded in RAM.
 - **Parallel pipeline** — reader / transformer / writer pipeline with
   rayon data-parallel tensor processing.
-- **REST API** — production-ready Actix-Web server with auth (JWT),
-  async conversion jobs and SSE progress.
-- **Desktop app** — native cross-platform GUI (egui/eframe) for local
-  drag-and-drop conversions.
+- **REST API** — Actix-Web server with auth (JWT), async conversion jobs
+  and SSE progress (optional).
 
 ---
 
@@ -74,28 +71,6 @@ git clone https://github.com/rustnew/UMC.git
 cd UMC
 cargo build --release -p umc-cli
 ./target/release/umc --help
-```
-
-### Desktop app (interface native)
-
-UMC ships a native desktop application (no web server, no browser) built
-with egui/eframe — drag-and-drop conversions, format auto-detection,
-progress bar, cancellation, history and settings, all local:
-
-```bash
-cargo run -p umc-desktop
-```
-
-```bash
-# Or build a standalone binary
-cargo build --release -p umc-desktop
-./target/release/umc-desktop
-```
-
-**Install on Linux** (binary + menu entry + icon):
-
-```bash
-./packaging/install.sh
 ```
 
 ### Convert a model
@@ -133,25 +108,53 @@ umc path gguf onnx
 
 ---
 
+## Desktop App
+
+UMC ships a native desktop application (no web server, no browser) built
+with egui/eframe — drag-and-drop conversions, format auto-detection,
+progress bar, cancellation, history and settings, all local:
+
+```bash
+cargo run -p umc-desktop
+```
+
+```bash
+# Or build a standalone binary
+cargo build --release -p umc-desktop
+./target/release/umc-desktop
+```
+
+**Install on Linux** (binary + menu entry + icon):
+
+```bash
+./packaging/install.sh
+```
+
+### Screens
+
+| Screen | Description |
+|--------|-------------|
+| **Convertir** | Drag & drop, format auto-detection, source/target override, dtype, validation, threads, progress + cancel |
+| **Historique** | Past conversions, persisted as JSON (200 entries max) |
+| **Formats** | Supported formats catalogue (load/save/notes) |
+| **Réglages** | Theme (dark/light), default threads, validation — persisted |
+
+---
+
 ## Supported Formats
 
 | Format | Load | Save | Notes |
 |--------|:----:|:----:|-------|
 | **GGUF** | ✅ | ✅ | llama.cpp, Ollama, LM Studio |
-| **ONNX** | ✅ | ✅ | Universal inference format |
 | **SafeTensors** | ✅ | ✅ | HuggingFace standard |
-| **PyTorch** | ✅ | ✅ | `.pt`, `.pth`, `.bin` |
-| **TFLite** | ✅ | ✅ | Mobile & embedded |
-| **AWQ** | ✅ | ✅ | 4-bit quantization |
-| **GPTQ** | ✅ | ✅ | 4-bit quantization |
-| **LoRA** | ✅ | ✅ | Fine-tuning adapters |
-| **CoreML** | — | ✅ | Apple Silicon (external tooling) |
-| **ExecuTorch** | — | ✅ | On-device AI (external tooling) |
-| **OpenVINO** | — | ✅ | Intel CPU/GPU/VPU (external tooling) |
-| **TensorRT** | — | ✅ | NVIDIA GPU (external tooling) |
+| **ONNX** | 🚧 | 🚧 | Universal inference format |
+| **PyTorch** | 🚧 | 🚧 | `.pt`, `.pth`, `.bin` |
+| **TFLite** | 🚧 | 🚧 | Mobile & embedded |
+| **GGML** | 🚧 | — | Legacy GGML (read-only) |
+| **KerasH5** | 🚧 | — | Keras H5 (read-only) |
+| **SentencePiece** | ✅ | — | Tokenizers `.model` |
 
-*External formats are exported by invoking the vendor toolchain
-(`coremltools`, `executorch`, `openvino`, `trtexec`).*
+*✅ = implemented · 🚧 = planned · — = not supported*
 
 ---
 
@@ -269,6 +272,7 @@ flowchart TB
 | `crates/umc-tests` | Integration & round-trip test suite |
 | `umc-api` | REST API (Actix-Web + SQLx/Postgres) |
 | `umc-desktop` | Desktop app (egui/eframe, cross-platform) |
+| `packaging/` | Linux packaging (install script, .desktop entry) |
 
 ---
 
@@ -282,17 +286,17 @@ cargo build --workspace
 cargo test --workspace
 
 # Lint & format
-cargo clippy --workspace
+cargo clippy --workspace --all-targets
 cargo fmt --check
 
 # Run the CLI
 cargo run -p umc-cli -- --help
 
-# Run the API (needs PostgreSQL)
-cargo run -p umc-api
-
 # Run the desktop app
 cargo run -p umc-desktop
+
+# Run the API (needs PostgreSQL)
+cargo run -p umc-api
 ```
 
 ### Testing
@@ -303,7 +307,7 @@ The test suite covers:
   numeric validation (F32 must be bit-identical).
 - **Format integration** — GGUF, ONNX, SafeTensors loaders/savers.
 - **Pipeline** — reader/transformer/writer behavior.
-- **Compliance & channels** — API-level checks.
+- **Desktop worker** — end-to-end conversion through the background thread.
 
 ---
 
@@ -311,8 +315,8 @@ The test suite covers:
 
 | Status | Item |
 |--------|------|
-| ✅ Done | Core IR, 8 native formats, CLI, validation, API |
-| 🚧 Next | More native formats (Diffusers, GGML, SentencePiece) |
+| ✅ Done | Core IR, native formats, CLI, validation, desktop app |
+| 🚧 Next | More native formats (ONNX, PyTorch, TFLite) |
 | 🚧 Next | Quantization (Q4_K_M, FP8, INT8) |
 | 🚧 Next | Conversion certificates (ed25519) |
 | 💡 Planned | GitHub Action, SDKs, model hub |

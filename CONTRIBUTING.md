@@ -3,8 +3,8 @@
 First off, thanks for taking the time to contribute! 🔄
 
 UMC is the Universal Model Converter — the ffmpeg of AI models. It converts
-between 31 model formats without quality loss, at maximum speed, with
-mathematical proof.
+models between formats (GGUF, SafeTensors, ONNX, PyTorch, TFLite...) without
+quality loss, at maximum speed, with verifiable results.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ mathematical proof.
 - [Development Workflow](#development-workflow)
 - [Running Tests](#running-tests)
 - [Adding a New Format](#adding-a-new-format)
-- [The Web UI](#the-web-ui)
+- [The Desktop App](#the-desktop-app)
 - [The API](#the-api)
 - [Commit Conventions](#commit-conventions)
 - [Publishing](#publishing)
@@ -34,9 +34,9 @@ UMC is a Cargo workspace plus a REST API and a desktop app:
 | `crates/umc-detect` | Format detection & registry |
 | `crates/umc-graph` | Conversion graph + Dijkstra path finding |
 | `crates/umc-pipeline` | Reader/Transformer/Writer pipeline, mmap, parallelism |
-| `crates/umc-validate` | 4-level validation (structural, numeric, functional, certificate) |
-| `crates/umc-formats` | 31 format loaders/savers |
-| `crates/umc-cli` | CLI: `convert`, `inspect`, `dry-run`, `diff`, `doctor`... |
+| `crates/umc-validate` | Validation (structural, numeric) & certificates |
+| `crates/umc-formats` | Format loaders/savers |
+| `crates/umc-cli` | CLI: `convert`, `inspect`, `formats`, `path` |
 | `crates/umc-tests` | Integration & round-trip test suite |
 | `umc-api` | REST API (Actix-Web + SQLx/Postgres) |
 | `umc-desktop` | Desktop app (egui/eframe, cross-platform) |
@@ -104,7 +104,7 @@ cp .env.example .env   # configure DATABASE_URL, JWT_SECRET...
 cargo run -p umc-api
 ```
 
-The API listens on port `8085` by default. See `umc-api/.env` for options.
+The API listens on port `8080` by default. See `umc-api/.env` for options.
 
 ## Commit Conventions
 
@@ -123,4 +123,4 @@ Example: `feat(umc-formats): add MyFormat loader + round-trip tests`
 ## Publishing
 
 Releases are versioned with SemVer and tagged `vX.Y.Z`. See
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full release and deployment process.
+[CHANGELOG.md](CHANGELOG.md) for the release history.

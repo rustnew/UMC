@@ -6,28 +6,24 @@ the ffmpeg of AI models.
 ## Getting Started
 
 - [README](../README.md) — Overview, features, quick start
-- [LAUNCH](../LAUNCH.md) — How to launch the project
-- [Installation](../README.md#installation) — Install UMC
+- [CONTRIBUTING](../CONTRIBUTING.md) — How to contribute
+- [CHANGELOG](../CHANGELOG.md) — Release history
 
-## Project Documentation
+## Repository Layout
 
-The following documents describe the project in depth:
-
-| Document | Description |
-|----------|-------------|
-| [design.md](../design.md) | Architecture and design decisions |
-| [backend.md](../backend.md) | Backend implementation details |
-| [implemente.md](../implemente.md) | Implementation guide |
-| [probleme.md](../probleme.md) | Known problems and solutions |
-| [regles.md](../regles.md) | Project rules and conventions |
-
-## Repository
-
-- [Contributing](../CONTRIBUTING.md) — How to contribute
-- [Changelog](../CHANGELOG.md) — Release history
-- [Security](../SECURITY.md) — Security policy
-- [Code of Conduct](../CODE_OF_CONDUCT.md) — Community standards
-- [License](../LICENSE) — Apache 2.0
+| Directory | Description |
+|-----------|-------------|
+| `crates/umc-core` | Universal IR, tensor/graph/extension stores, traits |
+| `crates/umc-detect` | Format detection (magic bytes, extension, content) |
+| `crates/umc-graph` | Conversion graph & path finding |
+| `crates/umc-pipeline` | Reader/Transformer/Writer pipeline, mmap, parallelism |
+| `crates/umc-validate` | Structural, numeric validation & certificates |
+| `crates/umc-formats` | Format loaders/savers |
+| `crates/umc-cli` | CLI binary |
+| `crates/umc-tests` | Integration & round-trip test suite |
+| `umc-api` | REST API (Actix-Web + SQLx/Postgres) |
+| `umc-desktop` | Desktop app (egui/eframe, cross-platform) |
+| `packaging/` | Linux packaging (install script, .desktop entry) |
 
 ## Development
 
@@ -38,15 +34,18 @@ cargo build --workspace
 # Run all tests
 cargo test --workspace
 
-# Lint
-cargo clippy --workspace -- -D warnings
+# Lint & format
+cargo clippy --workspace --all-targets
 cargo fmt --check
 
-# Start the API
-cargo run -p umc-api
+# Run the CLI
+cargo run -p umc-cli -- --help
 
 # Run the desktop app
 cargo run -p umc-desktop
+
+# Run the API (needs PostgreSQL)
+cargo run -p umc-api
 ```
 
 ## Docker
