@@ -11,8 +11,22 @@
 
 </div>
 
-UMC converts models between formats (GGUF, SafeTensors, ONNX, PyTorch, TFLite, ...) through a
-single Universal Intermediate Representation. Written in Rust — no Python, no GIL, no server.
+## The problem
+
+Production AI is fragmented. GGUF for llama.cpp, SafeTensors for HuggingFace, ONNX for
+inference engines, PyTorch for training — every tool speaks its own format. Converting a model
+means juggling incompatible Python scripts, with silent quality loss and **no way to prove the
+result is correct**.
+
+## The vision
+
+UMC is **the ffmpeg of AI models**: one tool that converts any model to any format, losslessly,
+in a verifiable way — without Python, without a server, without guesswork.
+
+The key idea is a **Universal Intermediate Representation**. Converting A → B is always
+`load(A) → IR → save(B)`, never a fragile A → B converter. Formats are detected automatically
+(magic bytes, extension, content), conversions are validated structurally and numerically, and
+F32 round-trips are bit-identical. It is written in Rust: fast, memory-safe, single binary.
 
 ## Install
 
