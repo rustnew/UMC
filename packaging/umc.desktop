@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=UMC
+GenericName=Universal Model Converter
+Comment=Convert AI models between formats (GGUF, SafeTensors, ONNX, PyTorch…)
+Exec=umc-desktop
+Icon=umc
+Terminal=false
+Categories=Utility;Development;Science;
+Keywords=model;converter;gguf;safetensors;onnx;ai;ml;
+StartupNotify=true

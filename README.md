@@ -92,6 +92,12 @@ cargo build --release -p umc-desktop
 ./target/release/umc-desktop
 ```
 
+**Install on Linux** (binary + menu entry + icon):
+
+```bash
+./packaging/install.sh
+```
+
 ### Convert a model
 
 ```bash
