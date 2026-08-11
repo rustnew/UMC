@@ -52,12 +52,16 @@ cargo run -p umc-desktop
 ## Docker
 
 ```bash
-# Full stack (db + api + ui)
+# Backend stack (db + api)
 docker compose up -d --build
 
 # Health check
 ./healthcheck.sh
 ```
+
+> Note : UMC est désormais un outil de bureau local. L'interface utilisateur
+> est l'application native `umc-desktop` (egui/eframe) — il n'y a plus de
+> frontend web. Docker ne sert plus qu'au backend API si vous l'utilisez.
 
 ## API
 

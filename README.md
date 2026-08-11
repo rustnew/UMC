@@ -76,6 +76,22 @@ cargo build --release -p umc-cli
 ./target/release/umc --help
 ```
 
+### Desktop app (interface native)
+
+UMC ships a native desktop application (no web server, no browser) built
+with egui/eframe — drag-and-drop conversions, format auto-detection,
+progress bar, cancellation, history and settings, all local:
+
+```bash
+cargo run -p umc-desktop
+```
+
+```bash
+# Or build a standalone binary
+cargo build --release -p umc-desktop
+./target/release/umc-desktop
+```
+
 ### Convert a model
 
 ```bash

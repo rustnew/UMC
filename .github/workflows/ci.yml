@@ -21,6 +21,14 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install system dependencies (egui/eframe)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb1-dev libxcb-render0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxcb-xkb1-dev libxkbcommon-dev \
+            libwayland-dev libgl1-mesa-dev pkg-config
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:

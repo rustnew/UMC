@@ -1,0 +1,29 @@
+[package]
+name = "umc-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "UMC — Universal Model Converter (desktop app)"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "umc-desktop"
+path = "src/main.rs"
+
+[dependencies]
+umc-core    = { path = "../crates/umc-core" }
+umc-detect  = { path = "../crates/umc-detect" }
+umc-pipeline = { path = "../crates/umc-pipeline" }
+umc-validate = { path = "../crates/umc-validate" }
+
+# GUI
+eframe = { version = "0.36", default-features = true }
+egui = "0.36"
+rfd = "0.17"
+
+# Sérialisation (historique + réglages)
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Divers
+directories = "6"
+chrono = { version = "0.4", features = ["serde"] }

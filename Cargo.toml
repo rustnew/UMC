@@ -9,6 +9,7 @@ members = [
     "crates/umc-cli",
     "crates/umc-tests",
     "umc-api",
+    "umc-desktop",
 ]
 resolver = "2"
 
