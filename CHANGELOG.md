@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.0.0] — 2026-08
 
 ### Added
 
@@ -16,12 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   glisser-déposer, détection automatique du format, barre de progression,
   annulation, historique persistant et réglages.
 - Linux packaging (`packaging/install.sh` + entrée `.desktop`).
+- Tests de bout en bout du worker de conversion (GGUF → SafeTensors).
 
 ### Changed
 
 - UMC devient un outil de bureau local : suppression du frontend web
   (`umc-frontend`) et de l'interface web.
-- README refondu, documentation nettoyée.
+- README refondu, documentation nettoyée, fichiers obsolètes supprimés.
+- Versions uniformisées à 1.0.0 sur tout le workspace.
 
 ---
 

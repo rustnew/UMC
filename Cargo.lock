@@ -5210,7 +5210,7 @@ dependencies = [
 
 [[package]]
 name = "umc-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "serde_json",
@@ -5226,7 +5226,7 @@ dependencies = [
 
 [[package]]
 name = "umc-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "hex",
  "indexmap",
@@ -5242,7 +5242,7 @@ dependencies = [
 
 [[package]]
 name = "umc-desktop"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "directories",
@@ -5261,7 +5261,7 @@ dependencies = [
 
 [[package]]
 name = "umc-detect"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "tempfile",
  "tracing",
@@ -5270,7 +5270,7 @@ dependencies = [
 
 [[package]]
 name = "umc-formats"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "hex",
  "indexmap",
@@ -5290,7 +5290,7 @@ dependencies = [
 
 [[package]]
 name = "umc-graph"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "petgraph",
  "tracing",
@@ -5299,7 +5299,7 @@ dependencies = [
 
 [[package]]
 name = "umc-pipeline"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "crossbeam",
  "rayon",
@@ -5316,7 +5316,7 @@ dependencies = [
 
 [[package]]
 name = "umc-tests"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "prost",
  "serde_json",
@@ -5331,7 +5331,7 @@ dependencies = [
 
 [[package]]
 name = "umc-validate"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "hex",
  "serde",

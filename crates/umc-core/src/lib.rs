@@ -28,4 +28,4 @@ pub use ir::{
 pub use traits::{FormatLoader, FormatSaver, LoadOptions, ProgressCallback, SaveOptions};
 
 /// UMC version string — embedded in all certificates and provenance entries.
-pub const UMC_VERSION: &str = "0.1.0";
+pub const UMC_VERSION: &str = "1.0.0";
