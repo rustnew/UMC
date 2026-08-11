@@ -41,7 +41,6 @@ petgraph         = "0.6"
 
 # Protobuf (ONNX)
 prost            = "0.13"
-prost-types      = "0.13"
 
 # ZIP (PyTorch)
 zip              = { version = "2.1", default-features = false, features = ["deflate"] }
@@ -53,8 +52,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tests
 tempfile         = "3.13"
-proptest         = "1.5"
-criterion        = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 opt-level        = 3

@@ -1,9 +1,6 @@
 use std::io::Write;
 /// Integration tests for the ONNX loader and saver.
-use umc_core::{
-    DType, FormatLoader, FormatSaver, LoadOptions, ProgressCallback, SaveOptions, Tensor,
-    UniversalIR,
-};
+use umc_core::{DType, FormatLoader, FormatSaver, LoadOptions, ProgressCallback, SaveOptions};
 use umc_formats::{OnnxLoader, OnnxSaver};
 
 fn make_onnx_bytes_f32(tensors: &[(&str, Vec<usize>, Vec<f32>)]) -> Vec<u8> {

@@ -203,7 +203,6 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    use umc_core::{Tensor, UniversalIR};
 
     fn make_st_file(tensors: &[(&str, &str, Vec<usize>, &[f32])]) -> NamedTempFile {
         let mut header_map = serde_json::Map::new();

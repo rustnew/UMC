@@ -36,10 +36,6 @@ impl<'a> FlatBufReader<'a> {
         Self { data }
     }
 
-    fn u8_at(&self, pos: usize) -> Option<u8> {
-        self.data.get(pos).copied()
-    }
-
     fn u16_at(&self, pos: usize) -> Option<u16> {
         let b = self.data.get(pos..pos + 2)?;
         Some(u16::from_le_bytes([b[0], b[1]]))

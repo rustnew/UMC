@@ -222,7 +222,7 @@ fn build_tflite_flatbuffer(
     let tensors_vec_pos = fb.pos();
     fb.patch(sg_tensors_slot, tensors_vec_pos);
     fb.pu32(n as u32);
-    let mut tensor_slots: Vec<usize> = (0..n).map(|_| fb.slot()).collect();
+    let tensor_slots: Vec<usize> = (0..n).map(|_| fb.slot()).collect();
 
     // ── Tensor vtables + tables (all shapes/names written later) ──────────
     let mut tensor_shape_slots: Vec<usize> = Vec::with_capacity(n);
@@ -275,7 +275,7 @@ fn build_tflite_flatbuffer(
     let buffers_vec_pos = fb.pos();
     fb.patch(model_buffers_slot, buffers_vec_pos);
     fb.pu32((n + 1) as u32);
-    let mut buf_table_slots: Vec<usize> = (0..n + 1).map(|_| fb.slot()).collect();
+    let buf_table_slots: Vec<usize> = (0..n + 1).map(|_| fb.slot()).collect();
 
     // ── Buffer[0]: empty — 0 field vtable (object = soffset only) ────────
     let b0_vt = fb.write_vtable(&[]); // 0 fields

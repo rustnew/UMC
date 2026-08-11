@@ -2,10 +2,9 @@ use super::pickle::{self, Pv};
 use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
-use std::sync::Arc;
 use umc_core::ir::provenance::ProvenanceEntryData;
 use umc_core::ir::MetaValue;
-use umc_core::{DType, Tensor, TensorData, UmcError, UniversalIR};
+use umc_core::{DType, Tensor, UmcError, UniversalIR};
 use umc_core::{FormatLoader, LoadOptions, ProgressCallback, UMC_VERSION};
 use zip::ZipArchive;
 
@@ -108,7 +107,7 @@ impl FormatLoader for PyTorchLoader {
                 dtype_class,
                 storage_offset,
                 shape,
-                stride,
+                ..
             } = pv
             {
                 let dtype = storage_to_dtype(dtype_class);

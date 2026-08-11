@@ -330,7 +330,7 @@ mod tests {
     use crate::gguf::reader::GgufLoader;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    use umc_core::{DType, FormatLoader, LoadOptions, ProgressCallback, Tensor};
+    use umc_core::{DType, FormatLoader, LoadOptions, ProgressCallback};
 
     fn write_minimal_gguf_v3() -> NamedTempFile {
         let mut f = NamedTempFile::with_suffix(".gguf").unwrap();

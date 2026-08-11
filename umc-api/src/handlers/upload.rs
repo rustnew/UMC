@@ -56,7 +56,7 @@ pub async fn upload_file(
         file_path = Some(dest);
     }
 
-    let path = file_path.ok_or_else(|| ApiError::BadRequest("No file in upload".into()))?;
+    let _path = file_path.ok_or_else(|| ApiError::BadRequest("No file in upload".into()))?;
     let hash = format!("{:016x}", xxh64(&all_bytes, 0));
 
     let detected_format = detect_format_from_name(&original_name);

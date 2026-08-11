@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use tokio::sync::{broadcast, Semaphore};
-use uuid::Uuid;
 
 use crate::config::Config;
 use crate::models::ProgressEvent;

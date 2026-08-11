@@ -3,7 +3,7 @@
 /// Used when saving to formats that don't natively support LoRA (GGUF, ONNX, TFLite).
 use std::collections::HashMap;
 use std::sync::Arc;
-use umc_core::{DType, Tensor, TensorData, UmcError, UniversalIR};
+use umc_core::{DType, TensorData, UmcError, UniversalIR};
 
 /// Merge all LoRA adapters from `adapter_ir` into `base_ir`.
 /// Modifies base_ir tensors in-place.
@@ -170,6 +170,7 @@ fn layer_to_base_key(layer_name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use umc_core::Tensor;
 
     #[test]
     fn test_merge_simple_lora() {

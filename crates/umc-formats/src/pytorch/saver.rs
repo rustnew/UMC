@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::path::Path;
 use umc_core::{DType, UmcError, UniversalIR};
-use umc_core::{FormatSaver, ProgressCallback, SaveOptions, UMC_VERSION};
+use umc_core::{FormatSaver, ProgressCallback, SaveOptions};
 use zip::{write::FileOptions, ZipWriter};
 
 pub struct PyTorchSaver;
@@ -134,8 +134,6 @@ fn write_state_dict_pickle(entries: &[PtTensorEntry]) -> Vec<u8> {
     out.push(b'(');
 
     // For each tensor, write key (SHORT_BINUNICODE) + value (_rebuild_tensor_v2)
-    let mut memo_idx: u8 = 0;
-
     for entry in entries {
         // ── Write tensor name (key) ──────────────────────────────────────
         let name_bytes = entry.name.as_bytes();

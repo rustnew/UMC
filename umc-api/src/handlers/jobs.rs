@@ -1,5 +1,4 @@
 use actix_web::{web, HttpResponse};
-use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{

@@ -1,7 +1,6 @@
 /// Minimal pickle protocol 2/4 parser for PyTorch state_dict files.
 /// Handles exactly the patterns produced by torch.save(state_dict, path).
 use std::collections::HashMap;
-use std::io::{Cursor, Read};
 
 // ── Pickle opcodes (subset used by PyTorch) ───────────────────────────────────
 
@@ -124,8 +123,6 @@ impl Pv {
 
 // ── Parser ────────────────────────────────────────────────────────────────────
 
-struct Mark;
-
 pub struct PickleParser<'a> {
     data: &'a [u8],
     pos: usize,
@@ -186,10 +183,6 @@ impl<'a> PickleParser<'a> {
 
     fn push(&mut self, v: Pv) {
         self.stack.push(v);
-    }
-
-    fn peek(&self) -> Option<&Pv> {
-        self.stack.last()
     }
 
     fn pop(&mut self) -> Option<Pv> {
@@ -322,7 +315,7 @@ impl<'a> PickleParser<'a> {
                 DICT => {
                     let mut items = self.pop_mark();
                     let mut dict: Vec<(Pv, Pv)> = Vec::with_capacity(items.len() / 2);
-                    let mut i = 0;
+                    let i = 0;
                     while i + 1 < items.len() {
                         let k = items.remove(i);
                         let v = items.remove(i);
@@ -340,7 +333,7 @@ impl<'a> PickleParser<'a> {
                 SETITEMS => {
                     let mut items = self.pop_mark();
                     if let Some(Pv::Dict(ref mut d)) = self.stack.last_mut() {
-                        let mut i = 0;
+                        let i = 0;
                         while i + 1 < items.len() {
                             let k = items.remove(i);
                             let v = items.remove(i);

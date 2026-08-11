@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse};
+use actix_web::HttpResponse;
 
 use crate::{errors::ApiError, models::FormatInfo};
 

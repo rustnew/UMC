@@ -398,7 +398,7 @@ mod tests {
         let output = NamedTempFile::with_suffix(".safetensors").unwrap();
 
         let pipeline = ConversionPipeline::new();
-        let mut req = ConversionRequest::new(input.path(), output.path());
+        let req = ConversionRequest::new(input.path(), output.path());
         req.cancellation.cancel(); // cancel before starting
 
         let result = pipeline.convert(req, &ProgressCallback::noop());

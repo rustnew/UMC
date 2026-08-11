@@ -88,14 +88,6 @@ impl FormatLoader for LoraLoader {
             }
         }
 
-        // Build AdapterInfo with all LoRA tensor pairs
-        let lora_a_keys: Vec<String> = ir
-            .tensors
-            .iter()
-            .filter(|(k, _)| k.contains("lora_A") || k.contains("lora_a"))
-            .map(|(k, _)| k.clone())
-            .collect();
-
         let mut adapter_tensors: indexmap::IndexMap<String, Vec<u8>> = indexmap::IndexMap::new();
         for key in ir
             .tensors

@@ -7,7 +7,7 @@ use crate::{auth::AuthUser, errors::ApiError, state::AppState};
 
 /// GET /v1/jobs/:id/progress  — SSE endpoint
 pub async fn job_progress_sse(
-    req: HttpRequest,
+    _req: HttpRequest,
     state: web::Data<AppState>,
     user: AuthUser,
     path: web::Path<Uuid>,

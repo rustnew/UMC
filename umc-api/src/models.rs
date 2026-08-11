@@ -3,21 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-// ── User ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, FromRow, Serialize)]
-pub struct User {
-    pub id: Uuid,
-    pub email: String,
-    #[serde(skip)]
-    pub password_hash: String,
-    pub display_name: Option<String>,
-    pub plan: String,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub last_login_at: Option<DateTime<Utc>>,
-}
+// ── Auth DTOs ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
@@ -48,18 +34,6 @@ pub struct UserPublic {
     pub display_name: Option<String>,
     pub plan: String,
     pub created_at: DateTime<Utc>,
-}
-
-impl From<User> for UserPublic {
-    fn from(u: User) -> Self {
-        Self {
-            id: u.id,
-            email: u.email,
-            display_name: u.display_name,
-            plan: u.plan,
-            created_at: u.created_at,
-        }
-    }
 }
 
 // ── Job ──────────────────────────────────────────────────────────────────────
@@ -157,11 +131,4 @@ pub struct FormatInfo {
     pub native: bool,
     pub extensions: Vec<String>,
     pub description: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GraphEdge {
-    pub from: String,
-    pub to: String,
-    pub cost: f64,
 }
