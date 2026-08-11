@@ -5,8 +5,18 @@ use egui::{Color32, RichText};
 
 /// Catalogue statique des formats (aligné sur le CLI `umc formats`).
 const FORMATS: &[(&str, &str, &str, &str)] = &[
-    ("GGUF", "✓ natif", "prévu", "GGUF v1/v2/v3, tous types de quant"),
-    ("SafeTensors", "✓ natif", "✓ natif", "SafeTensors HuggingFace"),
+    (
+        "GGUF",
+        "✓ natif",
+        "prévu",
+        "GGUF v1/v2/v3, tous types de quant",
+    ),
+    (
+        "SafeTensors",
+        "✓ natif",
+        "✓ natif",
+        "SafeTensors HuggingFace",
+    ),
     ("ONNX", "prévu", "prévu", "ONNX opset 13-21"),
     ("PyTorch", "prévu", "prévu", "PyTorch .pt/.pth (pickle sûr)"),
     ("TFLite", "prévu", "prévu", "TFLite FlatBuffers"),

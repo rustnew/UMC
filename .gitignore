@@ -19,9 +19,6 @@
 target/
 **/target/
 
-# ─── Fichiers de build ───
-Cargo.lock
-
 # ─── Fichiers sensibles ───
 .env
 .env.local
@@ -38,12 +35,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
-# ─── Node (frontend) ───
-node_modules/
-.next/
-out/
-dist/
-
-# ─── Dépôt git imbriqué (backup local) ───
-git/

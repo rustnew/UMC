@@ -57,18 +57,12 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
         ui.group(|ui| {
             ui.label(RichText::new("Apparence").strong());
             ui.add_space(4.0);
-            if ui
-                .selectable_label(*theme_dark, "Thème sombre")
-                .clicked()
-            {
+            if ui.selectable_label(*theme_dark, "Thème sombre").clicked() {
                 *theme_dark = true;
                 settings.theme_dark = true;
                 changed = true;
             }
-            if ui
-                .selectable_label(!*theme_dark, "Thème clair")
-                .clicked()
-            {
+            if ui.selectable_label(!*theme_dark, "Thème clair").clicked() {
                 *theme_dark = false;
                 settings.theme_dark = false;
                 changed = true;
@@ -83,7 +77,10 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
 
             ui.horizontal(|ui| {
                 ui.label("Threads par défaut :");
-                if ui.selectable_label(settings.default_threads == 0, "Auto").clicked() {
+                if ui
+                    .selectable_label(settings.default_threads == 0, "Auto")
+                    .clicked()
+                {
                     settings.default_threads = 0;
                     changed = true;
                 }

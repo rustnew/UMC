@@ -21,7 +21,11 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
         if history.entries.is_empty() {
             ui.add_space(40.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new("Aucune conversion pour l'instant.").weak().size(15.0));
+                ui.label(
+                    RichText::new("Aucune conversion pour l'instant.")
+                        .weak()
+                        .size(15.0),
+                );
                 ui.label(
                     RichText::new("Lancez une conversion depuis l'écran « Convertir ».")
                         .weak()
@@ -37,7 +41,9 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
                 .min_col_width(90.0)
                 .show(ui, |ui| {
                     // En-tête
-                    for h in ["Date", "Source", "Cible", "Tenseurs", "Durée", "Statut", "Fichier"] {
+                    for h in [
+                        "Date", "Source", "Cible", "Tenseurs", "Durée", "Statut", "Fichier",
+                    ] {
                         ui.label(RichText::new(h).strong());
                     }
                     ui.end_row();

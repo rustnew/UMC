@@ -103,9 +103,12 @@ impl ConvertState {
     }
 
     fn start(&mut self) {
-        let Some(input) = self.input.clone() else { return };
+        let Some(input) = self.input.clone() else {
+            return;
+        };
         let output = if self.output_text.trim().is_empty() {
-            self.default_output().unwrap_or_else(|| PathBuf::from("output.gguf"))
+            self.default_output()
+                .unwrap_or_else(|| PathBuf::from("output.gguf"))
         } else {
             PathBuf::from(self.output_text.trim())
         };
@@ -198,14 +201,8 @@ impl ConvertState {
                         timestamp: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
                         input: self.input.clone().unwrap_or_default(),
                         output: self.output.clone().unwrap_or_default(),
-                        source_format: self
-                            .detected_format
-                            .clone()
-                            .unwrap_or_else(|| "?".into()),
-                        target_format: self
-                            .target_override
-                            .clone()
-                            .unwrap_or_else(|| "?".into()),
+                        source_format: self.detected_format.clone().unwrap_or_else(|| "?".into()),
+                        target_format: self.target_override.clone().unwrap_or_else(|| "?".into()),
                         elapsed_ms: 0,
                         tensor_count: 0,
                         status: "error".into(),
@@ -224,7 +221,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
     egui::CentralPanel::default().show(ui, |ui| {
         ui.add_space(6.0);
         ui.heading("Convertir un modèle");
-        ui.label(RichText::new("Convertissez un fichier de modèle entre formats supportés.").weak());
+        ui.label(
+            RichText::new("Convertissez un fichier de modèle entre formats supportés.").weak(),
+        );
         ui.add_space(12.0);
 
         // ── Zone de dépôt / sélection ─────────────────────────────────────
@@ -277,7 +276,21 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                 ui.add_space(6.0);
                 if ui.button("Parcourir…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Modèles", &["gguf", "safetensors", "bin", "pt", "pth", "onnx", "tflite", "h5", "ggml", "model"])
+                        .add_filter(
+                            "Modèles",
+                            &[
+                                "gguf",
+                                "safetensors",
+                                "bin",
+                                "pt",
+                                "pth",
+                                "onnx",
+                                "tflite",
+                                "h5",
+                                "ggml",
+                                "model",
+                            ],
+                        )
                         .pick_file()
                     {
                         state.input = Some(path);
@@ -299,7 +312,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             // Format source
             ui.horizontal(|ui| {
                 ui.label("Format source :");
-                if ui.selectable_label(state.source_override.is_none(), "Auto").clicked() {
+                if ui
+                    .selectable_label(state.source_override.is_none(), "Auto")
+                    .clicked()
+                {
                     state.source_override = None;
                 }
                 let formats = FormatRegistry::new().format_names();
@@ -316,7 +332,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             // Format cible
             ui.horizontal(|ui| {
                 ui.label("Format cible :");
-                if ui.selectable_label(state.target_override.is_none(), "Auto (extension)").clicked() {
+                if ui
+                    .selectable_label(state.target_override.is_none(), "Auto (extension)")
+                    .clicked()
+                {
                     state.target_override = None;
                 }
                 let formats = FormatRegistry::new().format_names();
@@ -333,7 +352,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             // DType
             ui.horizontal(|ui| {
                 ui.label("DType cible :");
-                if ui.selectable_label(state.dtype_override.is_none(), "Conserver").clicked() {
+                if ui
+                    .selectable_label(state.dtype_override.is_none(), "Conserver")
+                    .clicked()
+                {
                     state.dtype_override = None;
                 }
                 let dtypes = [
@@ -449,7 +471,8 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                     .weak(),
                 );
                 ui.add_space(6.0);
-                if ui.button(RichText::new("Annuler").color(Color32::from_rgb(0xe0, 0x5a, 0x5a)))
+                if ui
+                    .button(RichText::new("Annuler").color(Color32::from_rgb(0xe0, 0x5a, 0x5a)))
                     .clicked()
                 {
                     state.cancel();
@@ -495,9 +518,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                 ui.horizontal(|ui| {
                     if ui.button("Ouvrir le dossier").clicked() {
                         if let Some(dir) = output.parent() {
-                            let _ = std::process::Command::new("xdg-open")
-                                .arg(dir)
-                                .spawn();
+                            let _ = std::process::Command::new("xdg-open").arg(dir).spawn();
                         }
                     }
                     if ui.button("Nouvelle conversion").clicked() {
@@ -533,16 +554,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
         // ── Bouton principal ──────────────────────────────────────────────
         let can_start = state.input.is_some() && !state.running;
-        let btn = egui::Button::new(
-            RichText::new("▶  Convertir").size(16.0).strong(),
-        )
-        .fill(Color32::from_rgb(0x4f, 0x9d, 0xe9))
-        .corner_radius(8.0)
-        .min_size(egui::vec2(ui.available_width(), 42.0));
-        if ui.add_sized([ui.available_width(), 42.0], btn)
-            .clicked()
-            && can_start
-        {
+        let btn = egui::Button::new(RichText::new("▶  Convertir").size(16.0).strong())
+            .fill(Color32::from_rgb(0x4f, 0x9d, 0xe9))
+            .corner_radius(8.0)
+            .min_size(egui::vec2(ui.available_width(), 42.0));
+        if ui.add_sized([ui.available_width(), 42.0], btn).clicked() && can_start {
             state.start();
         }
     });

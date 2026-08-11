@@ -51,9 +51,7 @@ pub struct WorkerResult {
 
 /// Lance une conversion en arrière-plan.
 /// Retourne (sender pour annuler, receiver pour les événements).
-pub fn spawn_conversion(
-    opts: ConvertOptions,
-) -> (Arc<CancellationToken>, Receiver<WorkerEvent>) {
+pub fn spawn_conversion(opts: ConvertOptions) -> (Arc<CancellationToken>, Receiver<WorkerEvent>) {
     let token = Arc::new(CancellationToken::new());
     let (tx, rx): (Sender<WorkerEvent>, Receiver<WorkerEvent>) = mpsc::channel();
 
@@ -225,7 +223,8 @@ mod tests {
         loop {
             match rx.recv_timeout(std::time::Duration::from_millis(100)) {
                 Ok(ev) => {
-                    let is_terminal = matches!(ev, WorkerEvent::Done { .. } | WorkerEvent::Error(_));
+                    let is_terminal =
+                        matches!(ev, WorkerEvent::Done { .. } | WorkerEvent::Error(_));
                     events.push(ev);
                     if is_terminal {
                         return events;

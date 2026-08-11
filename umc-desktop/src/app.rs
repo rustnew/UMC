@@ -91,11 +91,7 @@ impl eframe::App for UmcApp {
                             .strong()
                             .color(Color32::from_rgb(0x4f, 0x9d, 0xe9)),
                     );
-                    ui.label(
-                        RichText::new("Universal Model Converter")
-                            .size(11.0)
-                            .weak(),
-                    );
+                    ui.label(RichText::new("Universal Model Converter").size(11.0).weak());
                 });
                 ui.add_space(16.0);
 
@@ -107,16 +103,14 @@ impl eframe::App for UmcApp {
                 ] {
                     let selected = self.screen == screen;
                     let text = format!("{}  {}", screen.icon(), screen.title());
-                    let button = egui::Button::new(
-                        RichText::new(text).size(15.0),
-                    )
-                    .fill(if selected {
-                        ui.visuals().selection.bg_fill
-                    } else {
-                        egui::Color32::TRANSPARENT
-                    })
-                    .corner_radius(6.0)
-                    .min_size(egui::vec2(0.0, 34.0));
+                    let button = egui::Button::new(RichText::new(text).size(15.0))
+                        .fill(if selected {
+                            ui.visuals().selection.bg_fill
+                        } else {
+                            egui::Color32::TRANSPARENT
+                        })
+                        .corner_radius(6.0)
+                        .min_size(egui::vec2(0.0, 34.0));
 
                     if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
                         self.screen = screen;
