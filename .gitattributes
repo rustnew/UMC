@@ -2,8 +2,3 @@
 # UMC is a Rust workspace — keep the language stats accurate.
 *.rs linguist-language=Rust
 *.md linguist-documentation=false
-
-# Mark vendored / generated files so they don't skew the stats
-umc-frontend/src/routeTree.gen.ts linguist-generated=true
-umc-frontend/dist/ linguist-vendored=true
-umc-frontend/node_modules/ linguist-vendored=true

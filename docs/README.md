@@ -45,8 +45,8 @@ cargo fmt --check
 # Start the API
 cargo run -p umc-api
 
-# Start the frontend
-cd umc-frontend && bun run dev
+# Run the desktop app
+cargo run -p umc-desktop
 ```
 
 ## Docker

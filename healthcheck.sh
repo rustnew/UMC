@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─── UMC Health Check Script ─────────────────────────────────────────────────
-# Verifies that all UMC services are running and healthy.
+# Verifies that the UMC API is running and healthy.
 #
 # Usage: ./healthcheck.sh
 # ──────────────────────────────────────────────────────────────────────────────
@@ -16,7 +16,6 @@ NC='\033[0m' # No Color
 # Service definitions: name|port|health_endpoint
 SERVICES=(
     "umc-api|8080|/health"
-    "umc-ui|8081|"
 )
 
 ALL_HEALTHY=true
@@ -25,7 +24,6 @@ for service_def in "${SERVICES[@]}"; do
     IFS='|' read -r name port endpoint <<< "$service_def"
 
     if [ -z "$endpoint" ]; then
-        # No health endpoint (e.g., frontend) — just check if port is open
         if curl -s --connect-timeout 3 "http://localhost:${port}" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC} ${name} (port ${port}): healthy"
         else
@@ -33,7 +31,6 @@ for service_def in "${SERVICES[@]}"; do
             ALL_HEALTHY=false
         fi
     else
-        # Check health endpoint
         response=$(curl -s --connect-timeout 3 "http://localhost:${port}${endpoint}" 2>/dev/null)
         if echo "$response" | grep -q '"ok"' || echo "$response" | grep -q '"status"'; then
             echo -e "${GREEN}✓${NC} ${name} (port ${port}): healthy"

@@ -26,7 +26,7 @@ interactions.
 
 ## Project Layout
 
-UMC is a Cargo workspace plus a REST API and a web frontend:
+UMC is a Cargo workspace plus a REST API and a desktop app:
 
 | Directory | Description |
 |-----------|-------------|
@@ -39,13 +39,12 @@ UMC is a Cargo workspace plus a REST API and a web frontend:
 | `crates/umc-cli` | CLI: `convert`, `inspect`, `dry-run`, `diff`, `doctor`... |
 | `crates/umc-tests` | Integration & round-trip test suite |
 | `umc-api` | REST API (Actix-Web + SQLx/Postgres) |
-| `umc-frontend` | Web dashboard (TanStack Start + React 19 + Vite) |
+| `umc-desktop` | Desktop app (egui/eframe, cross-platform) |
 
 ## Prerequisites
 
 - **Rust** (stable, edition 2021, rust-version 1.80+)
-- **Node.js 20+ / Bun** (for `umc-frontend`)
-- **PostgreSQL** (for `umc-api` — optional for CLI-only development)
+- **PostgreSQL** (for `umc-api` — optional for CLI/desktop development)
 
 ## Development Workflow
 
@@ -91,12 +90,10 @@ enables it in all conversion paths via the Dijkstra graph.
 5. Update the format table in `README.md`.
 6. Submit the PR.
 
-## The Web UI
+## The Desktop App
 
 ```bash
-cd umc-frontend
-bun install        # or npm install
-bun run dev        # Vite dev server
+cargo run -p umc-desktop
 ```
 
 ## The API

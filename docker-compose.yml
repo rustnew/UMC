@@ -1,19 +1,16 @@
 # ─── UMC — Docker Compose ──────────────────────────────────────────
 #
 # Usage:
-#   docker compose up              # Start all services
-#   docker compose up api ui       # Start backend + frontend only
-#   docker compose logs -f api     # Follow backend logs
+#   docker compose up              # Start the API
+#   docker compose logs -f api     # Follow API logs
 #
 # Environment:
-#   Copy .env.example files and fill in real values:
+#   Copy .env.example and fill in real values:
 #     cp umc-api/.env.example umc-api/.env
-#     cp umc-frontend/.env.example umc-frontend/.env
 #
 # Ports:
 #   5432 — postgres (database)
 #   8080 — umc-api (Rust backend)
-#   8081 — umc-ui (frontend)
 
 version: "3.9"
 
@@ -61,21 +58,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    restart: unless-stopped
-
-  # ── Frontend ─────────────────────────────────────────────────────
-  ui:
-    build:
-      context: .
-      dockerfile: Dockerfile.ui
-      args:
-        VITE_API_URL: http://localhost:8080
-    container_name: umc-ui
-    ports:
-      - "8081:80"
-    depends_on:
-      api:
-        condition: service_healthy
     restart: unless-stopped
 
 volumes:

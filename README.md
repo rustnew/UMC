@@ -59,7 +59,8 @@ $ umc convert model.gguf model.onnx
   rayon data-parallel tensor processing.
 - **REST API** — production-ready Actix-Web server with auth (JWT),
   async conversion jobs and SSE progress.
-- **Web dashboard** — TanStack Start + React 19 frontend.
+- **Desktop app** — native cross-platform GUI (egui/eframe) for local
+  drag-and-drop conversions.
 
 ---
 
@@ -186,7 +187,7 @@ cargo run -p umc-api
 
 ```mermaid
 flowchart LR
-    A[CLI / API / Frontend] --> B[Format Detection]
+    A[CLI / Desktop / API] --> B[Format Detection]
     B --> C[Loader]
     C --> D[Universal IR]
     D --> E[Saver]
@@ -245,7 +246,7 @@ flowchart TB
 | `crates/umc-cli` | CLI binary |
 | `crates/umc-tests` | Integration & round-trip test suite |
 | `umc-api` | REST API (Actix-Web + SQLx/Postgres) |
-| `umc-frontend` | Web dashboard (TanStack Start + React 19 + Vite) |
+| `umc-desktop` | Desktop app (egui/eframe, cross-platform) |
 
 ---
 
@@ -268,8 +269,8 @@ cargo run -p umc-cli -- --help
 # Run the API (needs PostgreSQL)
 cargo run -p umc-api
 
-# Run the frontend
-cd umc-frontend && bun install && bun run dev
+# Run the desktop app
+cargo run -p umc-desktop
 ```
 
 ### Testing
@@ -288,7 +289,7 @@ The test suite covers:
 
 | Status | Item |
 |--------|------|
-| ✅ Done | Core IR, 8 native formats, CLI, validation, API, frontend |
+| ✅ Done | Core IR, 8 native formats, CLI, validation, API |
 | 🚧 Next | More native formats (Diffusers, GGML, SentencePiece) |
 | 🚧 Next | Quantization (Q4_K_M, FP8, INT8) |
 | 🚧 Next | Conversion certificates (ed25519) |
