@@ -20,6 +20,8 @@ use crate::worker::{self, ConvertOptions, WorkerEvent};
 pub struct ConvertState {
     pub input: Option<PathBuf>,
     pub output: Option<PathBuf>,
+    /// Buffer éditable du champ « Sortie » (vide = chemin par défaut).
+    pub output_text: String,
 
     /// Format détecté automatiquement (affiché à l'utilisateur).
     pub detected_format: Option<String>,
@@ -54,6 +56,7 @@ impl Default for ConvertState {
         Self {
             input: None,
             output: None,
+            output_text: String::new(),
             detected_format: None,
             detected_confidence: 0.0,
             source_override: None,
@@ -101,11 +104,11 @@ impl ConvertState {
 
     fn start(&mut self) {
         let Some(input) = self.input.clone() else { return };
-        let output = self
-            .output
-            .clone()
-            .or_else(|| self.default_output())
-            .unwrap_or_else(|| PathBuf::from("output.gguf"));
+        let output = if self.output_text.trim().is_empty() {
+            self.default_output().unwrap_or_else(|| PathBuf::from("output.gguf"))
+        } else {
+            PathBuf::from(self.output_text.trim())
+        };
 
         let opts = ConvertOptions {
             input,
@@ -230,6 +233,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             let path = file.path().to_path_buf();
             state.input = Some(path);
             state.output = None;
+            state.output_text.clear();
             state.detect();
         }
 
@@ -278,6 +282,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                     {
                         state.input = Some(path);
                         state.output = None;
+                        state.output_text.clear();
                         state.detect();
                     }
                 }
@@ -394,22 +399,28 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
         // ── Sortie ────────────────────────────────────────────────────────
         ui.horizontal(|ui| {
             ui.label("Sortie :");
-            let default_out = state.default_output();
-            let shown = state
-                .output
-                .clone()
-                .or(default_out)
-                .unwrap_or_else(|| PathBuf::from("—"));
+            let width = (ui.available_width() - 40.0).max(120.0);
             ui.add(
-                egui::TextEdit::singleline(&mut shown.to_string_lossy().to_string())
-                    .desired_width(ui.available_width() - 100.0),
+                egui::TextEdit::singleline(&mut state.output_text)
+                    .hint_text("(par défaut : à côté de l'entrée)")
+                    .desired_width(width),
             );
             if ui.button("…").clicked() {
                 if let Some(path) = rfd::FileDialog::new().save_file() {
+                    state.output_text = path.display().to_string();
                     state.output = Some(path);
                 }
             }
         });
+        if state.output_text.trim().is_empty() {
+            if let Some(def) = state.default_output() {
+                ui.label(
+                    RichText::new(format!("Par défaut : {}", def.display()))
+                        .weak()
+                        .size(11.0),
+                );
+            }
+        }
 
         ui.add_space(16.0);
 
