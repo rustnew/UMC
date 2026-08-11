@@ -20,7 +20,7 @@ body:
       label: Where did you hit the issue?
       options:
         - CLI (umc-cli)
-        - Web UI (umc-frontend)
+        - Desktop app (umc-desktop)
         - API (umc-api)
         - Format loader / saver
         - Conversion pipeline
@@ -55,7 +55,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Rust version, Node version, browser, GPU model, RAM...
+      description: OS, Rust version, GPU model, RAM...
   - type: textarea
     id: logs
     attributes:
