@@ -46,22 +46,3 @@ jobs:
 
       - name: Format check
         run: cargo fmt --check
-
-  frontend-build:
-    name: Frontend (build)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        working-directory: umc-frontend
-        run: bun install --frozen-lockfile
-
-      - name: Build frontend
-        working-directory: umc-frontend
-        run: bun run build

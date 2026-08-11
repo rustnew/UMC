@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─── UMC Production Startup Script ────────────────────────────────────────────
-# Launches all services via Docker Compose for production deployment.
+# Launches the API via Docker Compose for production deployment.
 #
 # Usage: ./start-prod.sh
 # ──────────────────────────────────────────────────────────────────────────────
@@ -29,11 +29,6 @@ if [ ! -f "umc-api/.env" ]; then
     echo -e "${YELLOW}Please edit umc-api/.env with your real credentials before continuing.${NC}"
 fi
 
-if [ ! -f "umc-frontend/.env" ]; then
-    echo -e "${YELLOW}⚠️  umc-frontend/.env not found. Creating from example...${NC}"
-    cp umc-frontend/.env.example umc-frontend/.env
-fi
-
 # Build and start
 echo -e "${YELLOW}🔨 Building and starting services...${NC}"
 docker compose up -d --build
@@ -52,7 +47,6 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}  UMC Production Services Started${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
 echo -e "  API:      http://localhost:8080"
-echo -e "  Frontend: http://localhost:8081"
 echo -e "  Database: localhost:5432"
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
 echo ""
