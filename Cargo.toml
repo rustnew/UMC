@@ -43,7 +43,7 @@ petgraph         = "0.6"
 prost            = "0.13"
 
 # ZIP (PyTorch)
-zip              = { version = "2.1", default-features = false, features = ["deflate"] }
+zip              = { version = "8.6", default-features = false, features = ["deflate"] }
 
 # Logging & errors
 thiserror        = "1.0"
