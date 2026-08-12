@@ -18,7 +18,12 @@ const FORMATS: &[(&str, &str, &str, &str)] = &[
         "SafeTensors HuggingFace",
     ),
     ("ONNX", "planned", "planned", "ONNX opset 13-21"),
-    ("PyTorch", "planned", "planned", "PyTorch .pt/.pth (safe pickle)"),
+    (
+        "PyTorch",
+        "planned",
+        "planned",
+        "PyTorch .pt/.pth (safe pickle)",
+    ),
     ("TFLite", "planned", "planned", "TFLite FlatBuffers"),
     ("KerasH5", "planned", "—", "Keras H5 (read-only)"),
     ("GGML", "planned", "—", "GGML legacy (read-only)"),

@@ -21,11 +21,7 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
         if history.entries.is_empty() {
             ui.add_space(40.0);
             ui.vertical_centered(|ui| {
-                ui.label(
-                    RichText::new("No conversion yet.")
-                        .weak()
-                        .size(15.0),
-                );
+                ui.label(RichText::new("No conversion yet.").weak().size(15.0));
                 ui.label(
                     RichText::new("Start a conversion from the \"Convert\" screen.")
                         .weak()

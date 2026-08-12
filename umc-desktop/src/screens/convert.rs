@@ -221,9 +221,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
     egui::CentralPanel::default().show(ui, |ui| {
         ui.add_space(6.0);
         ui.heading("Convert a model");
-        ui.label(
-            RichText::new("Convert a model file between supported formats.").weak(),
-        );
+        ui.label(RichText::new("Convert a model file between supported formats.").weak());
         ui.add_space(12.0);
 
         // ── Drop / selection zone ───────────────────────────────────────────
