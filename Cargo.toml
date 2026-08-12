@@ -46,7 +46,7 @@ prost            = "0.13"
 zip              = { version = "2.1", default-features = false, features = ["deflate"] }
 
 # Logging & errors
-thiserror        = "1.0"
+thiserror        = "2.0"
 tracing          = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
