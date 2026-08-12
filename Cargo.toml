@@ -30,7 +30,7 @@ indexmap         = { version = "2.4", features = ["serde"] }
 
 # Hashing & cryptography
 xxhash-rust      = { version = "0.8", features = ["xxh64"] }
-sha2             = "0.10"
+sha2             = "0.11"
 hex              = "0.4"
 
 # CLI
