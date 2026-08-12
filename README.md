@@ -66,10 +66,10 @@ Drag & drop, format auto-detection, progress + cancel, history, settings.
 
 | Screen | Purpose |
 |--------|---------|
-| Convertir | Drop a model, pick target, convert |
-| Historique | Past conversions (persisted) |
+| Convert | Drop a model, pick target, convert |
+| History | Past conversions (persisted) |
 | Formats | Supported formats catalogue |
-| Réglages | Theme, threads, validation |
+| Settings | Theme, threads, validation |
 
 ## Formats
 
@@ -84,7 +84,7 @@ Drag & drop, format auto-detection, progress + cancel, history, settings.
 
 ## Documentation
 
-- [Docs](docs/README.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+- [Docs](docs/README.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
 - REST API: `umc-api` (Actix-Web) — [endpoints](docs/README.md#api)
 
 ## License

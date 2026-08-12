@@ -1,4 +1,4 @@
-# ─── Fichiers de modèles (lourds) ───
+# ─── Model files (large) ───
 *.gguf
 *.safetensors
 *.pt
@@ -15,14 +15,14 @@
 *.keras
 *.msgpack
 
-# ─── Dossiers de compilation Rust ───
+# ─── Rust build directories ───
 target/
 **/target/
 
-# ─── Packages de release ───
+# ─── Release packages ───
 dist/
 
-# ─── Fichiers sensibles ───
+# ─── Sensitive files ───
 .env
 .env.local
 *.pem

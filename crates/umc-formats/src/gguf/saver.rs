@@ -4,7 +4,7 @@ use std::io::{BufWriter, Write};
 ///
 /// Compliance with regles.md:
 /// - Bit-identical round-trip when raw metadata is in ExtensionStore.
-/// - Sémantique round-trip otherwise (same data, inferred types).
+/// - Semantic round-trip otherwise (same data, inferred types).
 /// - Zero-copy tensor data: bytes written directly from TensorData.
 /// - 32-byte data segment alignment (default; overridable via general.alignment).
 use std::path::Path;

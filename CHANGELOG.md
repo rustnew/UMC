@@ -12,18 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Desktop app (`umc-desktop`) : interface native egui/eframe avec
-  glisser-déposer, détection automatique du format, barre de progression,
-  annulation, historique persistant et réglages.
-- Linux packaging (`packaging/install.sh` + entrée `.desktop`).
-- Tests de bout en bout du worker de conversion (GGUF → SafeTensors).
+- Desktop app (`umc-desktop`): native egui/eframe UI with drag-and-drop,
+  automatic format detection, progress bar, cancellation, persistent
+  history and settings.
+- Linux packaging (`packaging/install.sh` + `.desktop` entry).
+- End-to-end tests for the conversion worker (GGUF → SafeTensors).
 
 ### Changed
 
-- UMC devient un outil de bureau local : suppression du frontend web
-  (`umc-frontend`) et de l'interface web.
-- README refondu, documentation nettoyée, fichiers obsolètes supprimés.
-- Versions uniformisées à 1.0.0 sur tout le workspace.
+- UMC is now a local desktop tool: removed the web frontend
+  (`umc-frontend`) and the web UI.
+- Reworked README, cleaned up documentation, removed obsolete files.
+- Unified all workspace crates to version 1.0.0.
 
 ---
 
@@ -31,17 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Workspace Rust : `umc-core`, `umc-detect`, `umc-graph`, `umc-pipeline`,
+- Rust workspace: `umc-core`, `umc-detect`, `umc-graph`, `umc-pipeline`,
   `umc-validate`, `umc-formats`, `umc-cli`, `umc-tests`.
-- Universal Intermediate Representation (IR) : TensorStore, GraphStore,
+- Universal Intermediate Representation (IR): TensorStore, GraphStore,
   ExtensionStore, ProvenanceChain.
-- Format detection : 13 détecteurs (magic bytes, extension, analyse de
-  contenu) — GGUF, GGML, SafeTensors, TFLite, HDF5, ONNX, PyTorch,
+- Format detection: 13 detectors (magic bytes, extension, content
+  analysis) — GGUF, GGML, SafeTensors, TFLite, HDF5, ONNX, PyTorch,
   SentencePiece, AWQ, GPTQ...
-- Conversion pipeline : reader / transformer / writer, mmap, parallélisme
-  rayon.
-- Validation structurelle et numérique (round-trip F32 bit-identique).
-- CLI : `convert`, `inspect`, `formats`, `path`.
-- REST API (`umc-api`, Actix-Web + SQLx/Postgres) : jobs asynchrones,
-  progression SSE, certificats.
-- Docker Compose (db + api), scripts de démarrage, CI GitHub Actions.
+- Conversion pipeline: reader / transformer / writer, mmap, rayon
+  parallelism.
+- Structural and numeric validation (bit-identical F32 round-trip).
+- CLI: `convert`, `inspect`, `formats`, `path`.
+- REST API (`umc-api`, Actix-Web + SQLx/Postgres): async jobs,
+  SSE progress, certificates.
+- Docker Compose (db + api), startup scripts, GitHub Actions CI.

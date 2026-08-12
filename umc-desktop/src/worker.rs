@@ -1,5 +1,5 @@
-//! Conversion en arrière-plan : le pipeline tourne sur un thread dédié,
-//! l'UI reste réactive et reçoit des événements de progression.
+//! Background conversion: the pipeline runs on a dedicated thread,
+//! the UI stays responsive and receives progress events.
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -9,7 +9,7 @@ use umc_core::{DType, LoadOptions, SaveOptions, UMC_VERSION};
 use umc_pipeline::{CancellationToken, ConversionPipeline, ConversionRequest};
 use umc_validate::ValidationMode;
 
-/// Options de conversion choisies dans l'UI.
+/// Conversion options chosen in the UI.
 #[derive(Debug, Clone)]
 pub struct ConvertOptions {
     pub input: PathBuf,
@@ -21,12 +21,12 @@ pub struct ConvertOptions {
     pub threads: usize,
 }
 
-/// Événements envoyés du worker vers l'UI.
+/// Events sent from the worker to the UI.
 #[derive(Debug, Clone)]
 pub enum WorkerEvent {
-    /// Progression : (tensors_done, tensors_total, message).
+    /// Progress: (tensors_done, tensors_total, message).
     Progress(u64, u64, String),
-    /// Conversion terminée avec succès.
+    /// Conversion completed successfully.
     Done {
         source_format: String,
         target_format: String,
@@ -35,11 +35,11 @@ pub enum WorkerEvent {
         output: PathBuf,
         warnings: Vec<String>,
     },
-    /// Échec de la conversion.
+    /// Conversion failure.
     Error(String),
 }
 
-/// Résultat final renvoyé par le worker.
+/// Final result returned by the worker.
 pub struct WorkerResult {
     pub source_format: String,
     pub target_format: String,
@@ -49,8 +49,8 @@ pub struct WorkerResult {
     pub warnings: Vec<String>,
 }
 
-/// Lance une conversion en arrière-plan.
-/// Retourne (sender pour annuler, receiver pour les événements).
+/// Launches a conversion in the background.
+/// Returns (sender to cancel, receiver for events).
 pub fn spawn_conversion(opts: ConvertOptions) -> (Arc<CancellationToken>, Receiver<WorkerEvent>) {
     let token = Arc::new(CancellationToken::new());
     let (tx, rx): (Sender<WorkerEvent>, Receiver<WorkerEvent>) = mpsc::channel();
@@ -83,11 +83,11 @@ fn run_conversion(
     tx: Sender<WorkerEvent>,
     token: Arc<CancellationToken>,
 ) -> Result<WorkerResult, String> {
-    let _ = tx.send(WorkerEvent::Progress(0, 0, "Détection du format…".into()));
+    let _ = tx.send(WorkerEvent::Progress(0, 0, "Detecting format…".into()));
 
     let pipeline = ConversionPipeline::new();
 
-    // Callback de progression → canal.
+    // Progress callback → channel.
     let progress = umc_core::ProgressCallback::with_handler(move |done, total, msg| {
         let _ = tx.send(WorkerEvent::Progress(done, total, msg.to_string()));
     });
@@ -124,7 +124,7 @@ fn run_conversion(
     })
 }
 
-/// Version UMC exposée à l'UI.
+/// UMC version exposed to the UI.
 pub fn version() -> &'static str {
     UMC_VERSION
 }
@@ -134,7 +134,7 @@ mod tests {
     use super::*;
     use std::sync::mpsc;
 
-    /// Conversion GGUF → SafeTensors de bout en bout via le worker.
+    /// End-to-end GGUF → SafeTensors conversion via the worker.
     #[test]
     fn test_worker_converts_gguf_to_safetensors() {
         let src = umc_tests::write_gguf_v3_with_f32_tensors(&[
@@ -157,20 +157,20 @@ mod tests {
         let (_token, rx) = spawn_conversion(opts);
         let events = drain_with_timeout(rx, 10);
 
-        // Le dernier événement doit être Done avec 2 tenseurs.
+        // The last event must be Done with 2 tensors.
         let done = events.iter().rev().find_map(|e| match e {
             WorkerEvent::Done { tensor_count, .. } => Some(*tensor_count),
             _ => None,
         });
-        assert_eq!(done, Some(2), "événements: {events:?}");
+        assert_eq!(done, Some(2), "events: {events:?}");
         assert!(!events.iter().any(|e| matches!(e, WorkerEvent::Error(_))));
         assert!(
             out_path.exists(),
-            "le fichier de sortie doit exister après conversion"
+            "the output file must exist after conversion"
         );
     }
 
-    /// Le worker envoie bien des événements de progression.
+    /// The worker properly sends progress events.
     #[test]
     fn test_worker_reports_progress() {
         let src = umc_tests::write_minimal_gguf();
@@ -192,15 +192,15 @@ mod tests {
             events
                 .iter()
                 .any(|e| matches!(e, WorkerEvent::Progress(_, _, _))),
-            "au moins un événement Progress attendu, reçu: {events:?}"
+            "at least one Progress event expected, received: {events:?}"
         );
         assert!(
             events.iter().any(|e| matches!(e, WorkerEvent::Done { .. })),
-            "la conversion doit aboutir, reçu: {events:?}"
+            "the conversion must succeed, received: {events:?}"
         );
     }
 
-    /// Annulation coopérative : cancel() bascule le drapeau.
+    /// Cooperative cancellation: cancel() flips the flag.
     #[test]
     fn test_cancel_token() {
         let token = umc_pipeline::CancellationToken::new();
@@ -209,14 +209,14 @@ mod tests {
         assert!(token.is_cancelled());
     }
 
-    /// Le canal est bien vidé même si aucun consommateur rapide.
+    /// The channel is drained even with no fast consumer.
     #[test]
     fn test_channel_drains() {
         let (_tx, rx): (mpsc::Sender<WorkerEvent>, _) = mpsc::channel();
-        let _ = rx.try_recv(); // ne doit pas paniquer
+        let _ = rx.try_recv(); // must not panic
     }
 
-    /// Vide le canal en bloquant jusqu'au Done/Error ou jusqu'au timeout.
+    /// Drains the channel blocking until Done/Error or until timeout.
     fn drain_with_timeout(rx: Receiver<WorkerEvent>, secs: u64) -> Vec<WorkerEvent> {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
         let mut events = Vec::new();

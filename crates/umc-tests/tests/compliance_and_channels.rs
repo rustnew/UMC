@@ -1,12 +1,12 @@
 /// ============================================================================
-/// UMC COMPLIANCE TEST — Règles d'Excellence en Conversion
+/// UMC COMPLIANCE TEST — Rules of Excellence in Conversion
 /// ============================================================================
 ///
 /// Verifies that UMC applies every principle in regles.md without exception:
-///   Vérité I   — Never lie: SHA256 provenances, divergence bounds
-///   Vérité II  — Document loss: validation levels, error reporting
-///   Vérité III — ExtensionStore: namespaced keys, size limit
-///   §3 Round-trip levels: bit-identical (GGUF), sémantique (ONNX/SafeTensors)
+///   Truth I   — Never lie: SHA256 provenances, divergence bounds
+///   Truth II  — Document loss: validation levels, error reporting
+///   Truth III — ExtensionStore: namespaced keys, size limit
+///   §3 Round-trip levels: bit-identical (GGUF), semantic (ONNX/SafeTensors)
 ///   §4 IR architecture: ExtensionStore, ConversionHints, AdapterInfo
 ///   §5 Dijkstra routing: optimal paths, multi-hop
 ///   §6–§10 Security, performance, validation, certification, completeness
@@ -326,7 +326,7 @@ fn channel_gguf_to_safetensors_data_fidelity() {
     for (name, _, original_vals) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original_vals);
-        // §3: F32→F32 sémantique: δ < 1e-6
+        // §3: F32→F32 semantic: δ < 1e-6
         assert!(
             div < 1e-6,
             "GGUF→SafeTensors: tensor '{}' divergence {:.2e} exceeds F32 tolerance",
@@ -589,7 +589,7 @@ fn channel_gguf_multihop_safetensors_gguf() {
     for (name, _, original) in &tensors {
         let reloaded = load_f32s(&ir2, name);
         let div = max_abs_divergence(&reloaded, original);
-        // §3: F32 multi-hop sémantique — 0 divergence (no quantization in this path)
+        // §3: F32 multi-hop semantic — 0 divergence (no quantization in this path)
         assert!(div < 1e-6, "Multi-hop '{}' divergence {:.2e}", name, div);
     }
 }

@@ -41,7 +41,7 @@ impl ConversionGraph {
             "GGUF",
             1.0,
             true,
-            "GGUF → GGUF (native round-trip, sémantique)",
+            "GGUF → GGUF (native round-trip, semantic)",
         );
 
         // GGUF ↔ SafeTensors (weights-only, always native)

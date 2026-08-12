@@ -1,7 +1,7 @@
-//! Écran « Convertir » — cœur de l'application.
+//! "Convert" screen — the heart of the application.
 //!
-//! Sélection du fichier (glisser-déposer ou dialogue natif), détection
-//! automatique du format, choix de la cible, options, progression, annulation.
+//! File selection (drag-and-drop or native dialog), automatic format
+//! detection, target choice, options, progress, cancellation.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,20 +16,20 @@ use umc_validate::ValidationMode;
 use crate::history::{History, HistoryEntry};
 use crate::worker::{self, ConvertOptions, WorkerEvent};
 
-/// État de l'écran de conversion.
+/// State of the conversion screen.
 pub struct ConvertState {
     pub input: Option<PathBuf>,
     pub output: Option<PathBuf>,
-    /// Buffer éditable du champ « Sortie » (vide = chemin par défaut).
+    /// Editable buffer of the "Output" field (empty = default path).
     pub output_text: String,
 
-    /// Format détecté automatiquement (affiché à l'utilisateur).
+    /// Automatically detected format (shown to the user).
     pub detected_format: Option<String>,
     pub detected_confidence: f32,
 
-    /// Format source forcé (None = auto).
+    /// Forced source format (None = auto).
     pub source_override: Option<String>,
-    /// Format cible (None = inféré de l'extension de sortie).
+    /// Target format (None = inferred from the output extension).
     pub target_override: Option<String>,
 
     pub dtype_override: Option<DType>,
@@ -43,11 +43,11 @@ pub struct ConvertState {
     pub progress_total: u64,
     pub progress_msg: String,
 
-    // ── Résultat ──
+    // ── Result ──
     pub result: Option<WorkerEvent>,
     pub last_error: Option<String>,
 
-    /// Canal de réception des événements du worker (None si inactif).
+    /// Channel receiving worker events (None if inactive).
     rx: Option<std::sync::mpsc::Receiver<WorkerEvent>>,
 }
 
@@ -77,7 +77,7 @@ impl Default for ConvertState {
 }
 
 impl ConvertState {
-    /// Détecte le format du fichier sélectionné.
+    /// Detects the format of the selected file.
     fn detect(&mut self) {
         self.detected_format = None;
         self.detected_confidence = 0.0;
@@ -90,7 +90,7 @@ impl ConvertState {
         }
     }
 
-    /// Construit le chemin de sortie par défaut (même dossier, extension cible).
+    /// Builds the default output path (same folder, target extension).
     fn default_output(&self) -> Option<PathBuf> {
         let input = self.input.as_ref()?;
         let ext = self
@@ -130,9 +130,9 @@ impl ConvertState {
         self.last_error = None;
         self.progress_done = 0;
         self.progress_total = 0;
-        self.progress_msg = "Démarrage…".into();
+        self.progress_msg = "Starting…".into();
 
-        // Poll du canal à chaque frame.
+        // Poll the channel every frame.
         self.rx = Some(rx);
     }
 
@@ -143,8 +143,8 @@ impl ConvertState {
     }
 
     fn poll(&mut self, history: &mut History) {
-        // On draine le canal dans un vecteur d'abord (pour libérer l'emprunt
-        // de `self.rx` avant de muter `self`).
+        // We drain the channel into a vector first (to release the borrow
+        // of `self.rx` before mutating `self`).
         let events: Vec<WorkerEvent> = {
             let Some(rx) = &self.rx else { return };
             std::iter::from_fn(|| rx.try_recv().ok()).collect()
@@ -186,9 +186,9 @@ impl ConvertState {
                         tensor_count,
                         status: "ok".into(),
                         message: if warnings.is_empty() {
-                            "Conversion réussie".into()
+                            "Conversion successful".into()
                         } else {
-                            format!("{} avertissement(s)", warnings.len())
+                            format!("{} warning(s)", warnings.len())
                         },
                     });
                 }
@@ -214,19 +214,19 @@ impl ConvertState {
     }
 }
 
-/// Affiche l'écran de conversion.
+/// Displays the conversion screen.
 pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) {
     state.poll(history);
 
     egui::CentralPanel::default().show(ui, |ui| {
         ui.add_space(6.0);
-        ui.heading("Convertir un modèle");
+        ui.heading("Convert a model");
         ui.label(
-            RichText::new("Convertissez un fichier de modèle entre formats supportés.").weak(),
+            RichText::new("Convert a model file between supported formats.").weak(),
         );
         ui.add_space(12.0);
 
-        // ── Zone de dépôt / sélection ─────────────────────────────────────
+        // ── Drop / selection zone ───────────────────────────────────────────
         let dropped = ui.ctx().input(|i| i.raw.dropped_files.clone());
         if let Some(file) = dropped.into_iter().next() {
             let path = file.path().to_path_buf();
@@ -252,32 +252,32 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                             ui.add_space(4.0);
                             ui.label(
                                 RichText::new(format!(
-                                    "Format détecté : {fmt} (confiance {:.0}%)",
+                                    "Detected format: {fmt} ({:.0}% confidence)",
                                     state.detected_confidence * 100.0
                                 ))
                                 .color(Color32::from_rgb(0x4f, 0x9d, 0xe9)),
                             );
                         } else {
                             ui.label(
-                                RichText::new("Format non reconnu — précisez-le manuellement.")
+                                RichText::new("Unrecognized format — specify it manually.")
                                     .color(Color32::from_rgb(0xe0, 0x8a, 0x3c)),
                             );
                         }
                     }
                     None => {
                         ui.label(
-                            RichText::new("Glissez-déposez un fichier de modèle ici")
+                            RichText::new("Drag and drop a model file here")
                                 .size(16.0)
                                 .weak(),
                         );
-                        ui.label(RichText::new("ou").weak());
+                        ui.label(RichText::new("or").weak());
                     }
                 }
                 ui.add_space(6.0);
-                if ui.button("Parcourir…").clicked() {
+                if ui.button("Browse…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter(
-                            "Modèles",
+                            "Models",
                             &[
                                 "gguf",
                                 "safetensors",
@@ -306,12 +306,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
         ui.add_space(12.0);
 
         // ── Options ───────────────────────────────────────────────────────
-        ui.collapsing("Options de conversion", |ui| {
+        ui.collapsing("Conversion options", |ui| {
             ui.add_space(4.0);
 
             // Format source
             ui.horizontal(|ui| {
-                ui.label("Format source :");
+                ui.label("Source format:");
                 if ui
                     .selectable_label(state.source_override.is_none(), "Auto")
                     .clicked()
@@ -331,7 +331,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
             // Format cible
             ui.horizontal(|ui| {
-                ui.label("Format cible :");
+                ui.label("Target format:");
                 if ui
                     .selectable_label(state.target_override.is_none(), "Auto (extension)")
                     .clicked()
@@ -351,9 +351,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
             // DType
             ui.horizontal(|ui| {
-                ui.label("DType cible :");
+                ui.label("Target DType:");
                 if ui
-                    .selectable_label(state.dtype_override.is_none(), "Conserver")
+                    .selectable_label(state.dtype_override.is_none(), "Keep")
                     .clicked()
                 {
                     state.dtype_override = None;
@@ -384,12 +384,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
             // Validation
             ui.horizontal(|ui| {
-                ui.label("Validation :");
+                ui.label("Validation:");
                 let modes = [
-                    ("Aucune", ValidationMode::None),
-                    ("Structurelle", ValidationMode::Structural),
-                    ("Numérique", ValidationMode::Numeric),
-                    ("Stricte", ValidationMode::Strict),
+                    ("None", ValidationMode::None),
+                    ("Structural", ValidationMode::Structural),
+                    ("Numeric", ValidationMode::Numeric),
+                    ("Strict", ValidationMode::Strict),
                 ];
                 for (label, mode) in modes {
                     let selected = state.validation_mode == mode;
@@ -403,7 +403,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
             // Threads
             ui.horizontal(|ui| {
-                ui.label("Threads :");
+                ui.label("Threads:");
                 if ui.selectable_label(state.threads == 0, "Auto").clicked() {
                     state.threads = 0;
                 }
@@ -418,13 +418,13 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
         ui.add_space(12.0);
 
-        // ── Sortie ────────────────────────────────────────────────────────
+        // ── Output ──────────────────────────────────────────────────────────
         ui.horizontal(|ui| {
-            ui.label("Sortie :");
+            ui.label("Output:");
             let width = (ui.available_width() - 40.0).max(120.0);
             ui.add(
                 egui::TextEdit::singleline(&mut state.output_text)
-                    .hint_text("(par défaut : à côté de l'entrée)")
+                    .hint_text("(default: next to the input)")
                     .desired_width(width),
             );
             if ui.button("…").clicked() {
@@ -437,7 +437,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
         if state.output_text.trim().is_empty() {
             if let Some(def) = state.default_output() {
                 ui.label(
-                    RichText::new(format!("Par défaut : {}", def.display()))
+                    RichText::new(format!("Default: {}", def.display()))
                         .weak()
                         .size(11.0),
                 );
@@ -446,11 +446,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
         ui.add_space(16.0);
 
-        // ── Progression / résultat ────────────────────────────────────────
+        // ── Progress / result ──────────────────────────────────────────────
         if state.running {
             ui.group(|ui| {
                 ui.set_min_width(ui.available_width());
-                ui.label(RichText::new("Conversion en cours…").strong());
+                ui.label(RichText::new("Conversion in progress…").strong());
                 ui.add_space(4.0);
                 let progress = if state.progress_total > 0 {
                     state.progress_done as f32 / state.progress_total as f32
@@ -465,14 +465,14 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                 ui.add_space(4.0);
                 ui.label(
                     RichText::new(format!(
-                        "{}  —  {}/{} tenseurs",
+                        "{}  —  {}/{} tensors",
                         state.progress_msg, state.progress_done, state.progress_total
                     ))
                     .weak(),
                 );
                 ui.add_space(6.0);
                 if ui
-                    .button(RichText::new("Annuler").color(Color32::from_rgb(0xe0, 0x5a, 0x5a)))
+                    .button(RichText::new("Cancel").color(Color32::from_rgb(0xe0, 0x5a, 0x5a)))
                     .clicked()
                 {
                     state.cancel();
@@ -495,13 +495,13 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             let warnings = warnings.clone();
             ui.group(|ui| {
                 ui.label(
-                    RichText::new("✓ Conversion terminée")
+                    RichText::new("✓ Conversion completed")
                         .strong()
                         .color(Color32::from_rgb(0x4c, 0xaf, 0x50)),
                 );
                 ui.add_space(4.0);
                 ui.label(format!(
-                    "{source_format} → {target_format}  |  {tensor_count} tenseurs  |  {:.1}s",
+                    "{source_format} → {target_format}  |  {tensor_count} tensors  |  {:.1}s",
                     elapsed_ms as f64 / 1000.0
                 ));
                 ui.label(RichText::new(output.display().to_string()).weak());
@@ -516,12 +516,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
                 }
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
-                    if ui.button("Ouvrir le dossier").clicked() {
+                    if ui.button("Open folder").clicked() {
                         if let Some(dir) = output.parent() {
                             let _ = std::process::Command::new("xdg-open").arg(dir).spawn();
                         }
                     }
-                    if ui.button("Nouvelle conversion").clicked() {
+                    if ui.button("New conversion").clicked() {
                         *state = ConvertState::default();
                     }
                 });
@@ -530,21 +530,21 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
             let err = err.clone();
             ui.group(|ui| {
                 ui.label(
-                    RichText::new("✗ Échec de la conversion")
+                    RichText::new("✗ Conversion failed")
                         .strong()
                         .color(Color32::from_rgb(0xe0, 0x5a, 0x5a)),
                 );
                 ui.add_space(4.0);
                 ui.label(RichText::new(err).weak());
                 ui.add_space(6.0);
-                if ui.button("Réessayer").clicked() {
+                if ui.button("Retry").clicked() {
                     state.last_error = None;
                     state.start();
                 }
             });
         } else {
             ui.label(
-                RichText::new("Sélectionnez un fichier puis lancez la conversion.")
+                RichText::new("Select a file then start the conversion.")
                     .weak()
                     .italics(),
             );
@@ -552,9 +552,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut ConvertState, history: &mut History) 
 
         ui.add_space(12.0);
 
-        // ── Bouton principal ──────────────────────────────────────────────
+        // ── Main button ─────────────────────────────────────────────────────
         let can_start = state.input.is_some() && !state.running;
-        let btn = egui::Button::new(RichText::new("▶  Convertir").size(16.0).strong())
+        let btn = egui::Button::new(RichText::new("▶  Convert").size(16.0).strong())
             .fill(Color32::from_rgb(0x4f, 0x9d, 0xe9))
             .corner_radius(8.0)
             .min_size(egui::vec2(ui.available_width(), 42.0));

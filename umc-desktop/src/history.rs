@@ -1,9 +1,9 @@
-//! Persistance de l'historique de conversion (JSON dans le répertoire de données).
+//! Persistence of the conversion history (JSON in the data directory).
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Une entrée d'historique de conversion.
+/// A conversion history entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
     pub timestamp: String,
@@ -17,14 +17,14 @@ pub struct HistoryEntry {
     pub message: String,
 }
 
-/// Historique complet, persisté en JSON.
+/// Full history, persisted as JSON.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct History {
     pub entries: Vec<HistoryEntry>,
 }
 
 impl History {
-    /// Répertoire de données de l'application (~/.local/share/umc ou équivalent).
+    /// Application data directory (~/.local/share/umc or equivalent).
     pub fn data_dir() -> PathBuf {
         if let Some(dirs) = directories::ProjectDirs::from("", "", "umc") {
             dirs.data_dir().to_path_buf()
@@ -37,7 +37,7 @@ impl History {
         Self::data_dir().join("history.json")
     }
 
-    /// Charge l'historique depuis le disque (vide si absent).
+    /// Loads the history from disk (empty if absent).
     pub fn load() -> Self {
         let path = Self::history_path();
         match std::fs::read_to_string(&path) {
@@ -46,7 +46,7 @@ impl History {
         }
     }
 
-    /// Sauvegarde l'historique sur le disque.
+    /// Saves the history to disk.
     pub fn save(&self) {
         let path = Self::history_path();
         if let Some(dir) = path.parent() {
@@ -57,7 +57,7 @@ impl History {
         }
     }
 
-    /// Ajoute une entrée en tête de liste (la plus récente d'abord), bornée à 200.
+    /// Adds an entry at the head of the list (most recent first), capped at 200.
     pub fn push(&mut self, entry: HistoryEntry) {
         self.entries.insert(0, entry);
         self.entries.truncate(200);

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# UMC — installation locale (Linux)
+# UMC — local installation (Linux)
 #
-# Installe dans ~/.local :
-#   - binaire  : ~/.local/bin/umc-desktop
-#   - entrée   : ~/.local/share/applications/umc.desktop
-#   - icône    : ~/.local/share/icons/hicolor/512x512/apps/umc.png
+# Installs into ~/.local:
+#   - binary  : ~/.local/bin/umc-desktop
+#   - entry   : ~/.local/share/applications/umc.desktop
+#   - icon    : ~/.local/share/icons/hicolor/512x512/apps/umc.png
 #
-# Deux modes :
-#   · depuis le repo    : ./packaging/install.sh            (build + install)
-#   · depuis le package : ./install.sh                      (binaire fourni)
+# Two modes:
+#   · from the repo   : ./packaging/install.sh            (build + install)
+#   · from the package: ./install.sh                      (binary provided)
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -20,30 +20,30 @@ BIN_DIR="${PREFIX}/bin"
 APP_DIR="${PREFIX}/share/applications"
 ICON_DIR="${PREFIX}/share/icons/hicolor/512x512/apps"
 
-# Binaire fourni dans le package ? (install.sh et umc-desktop côte à côte)
+# Binary provided in the package? (install.sh and umc-desktop side by side)
 BIN="$HERE/umc-desktop"
 if [[ ! -x "$BIN" ]]; then
   ROOT="$(cd "$HERE/.." && pwd)"
-  echo "🔨 Build release de umc-desktop…"
+  echo "🔨 Building release of umc-desktop…"
   (cd "$ROOT" && cargo build --release -p umc-desktop)
   BIN="$ROOT/target/release/umc-desktop"
 fi
 
 if [[ ! -x "$BIN" ]]; then
-  echo "❌ Binaire introuvable. Compilez d'abord : cargo build --release -p umc-desktop" >&2
+  echo "❌ Binary not found. Build it first: cargo build --release -p umc-desktop" >&2
   exit 1
 fi
 
-# Fichier .desktop (package ou repo)
+# .desktop file (package or repo)
 DESKTOP="$HERE/umc.desktop"
 [[ -f "$DESKTOP" ]] || DESKTOP="$HERE/../packaging/umc.desktop"
 
-echo "📦 Installation dans ${PREFIX}…"
+echo "📦 Installing into ${PREFIX}…"
 mkdir -p "$BIN_DIR" "$APP_DIR" "$ICON_DIR"
 
 install -m 0755 "$BIN" "$BIN_DIR/umc-desktop"
 
-# Icône (carré bleu « UMC ») si ImageMagick est disponible.
+# Icon (blue "UMC" square) if ImageMagick is available.
 if command -v convert >/dev/null 2>&1; then
   convert -size 512x512 xc:"#4f9de9" \
     -gravity center -fill white -pointsize 220 -annotate 0 "UMC" \
@@ -56,5 +56,5 @@ chmod 0644 "$APP_DIR/umc.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APP_DIR" || true
 
 echo ""
-echo "✅ UMC Desktop installé !"
-echo "   Lancez-le depuis le menu d'applications ou : ${BIN_DIR}/umc-desktop"
+echo "✅ UMC Desktop installed!"
+echo "   Launch it from the applications menu or: ${BIN_DIR}/umc-desktop"

@@ -1,4 +1,4 @@
-//! Application UMC Desktop — état global + navigation.
+//! UMC Desktop application — global state + navigation.
 
 use eframe::egui;
 use egui::{Color32, RichText};
@@ -6,7 +6,7 @@ use egui::{Color32, RichText};
 use crate::history::History;
 use crate::screens::{convert, formats, history, settings};
 
-/// Écrans disponibles dans la barre latérale.
+/// Available screens in the sidebar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
     Convert,
@@ -18,10 +18,10 @@ pub enum Screen {
 impl Screen {
     pub fn title(self) -> &'static str {
         match self {
-            Screen::Convert => "Convertir",
-            Screen::History => "Historique",
+            Screen::Convert => "Convert",
+            Screen::History => "History",
             Screen::Formats => "Formats",
-            Screen::Settings => "Réglages",
+            Screen::Settings => "Settings",
         }
     }
 
@@ -35,7 +35,7 @@ impl Screen {
     }
 }
 
-/// État global de l'application.
+/// Global application state.
 pub struct UmcApp {
     pub screen: Screen,
     pub history: History,
@@ -78,7 +78,7 @@ impl eframe::App for UmcApp {
         let ctx = ui.ctx().clone();
         self.apply_theme(&ctx);
 
-        // ── Barre latérale ────────────────────────────────────────────────
+        // ── Sidebar ─────────────────────────────────────────────────────────
         egui::Panel::left("sidebar")
             .exact_size(190.0)
             .resizable(false)
@@ -128,7 +128,7 @@ impl eframe::App for UmcApp {
                 });
             });
 
-        // ── Écran actif ───────────────────────────────────────────────────
+        // ── Active screen ───────────────────────────────────────────────────
         match self.screen {
             Screen::Convert => convert::show(ui, &mut self.convert, &mut self.history),
             Screen::History => history::show(ui, &mut self.history),

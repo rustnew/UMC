@@ -14,21 +14,21 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-# Sérialisation
+# Serialization
 serde            = { version = "1.0", features = ["derive"] }
 serde_json       = "1.0"
 
-# Parallélisme
+# Parallelism
 rayon            = "1.10"
 crossbeam        = "0.8"
 tokio            = { version = "1.40", features = ["full"] }
 num_cpus         = "1.16"
 
-# Mémoire et I/O
+# Memory & I/O
 memmap2          = "0.9"
 indexmap         = { version = "2.4", features = ["serde"] }
 
-# Hashing et cryptographie
+# Hashing & cryptography
 xxhash-rust      = { version = "0.8", features = ["xxh64"] }
 sha2             = "0.10"
 hex              = "0.4"
@@ -36,7 +36,7 @@ hex              = "0.4"
 # CLI
 clap             = { version = "4.5", features = ["derive"] }
 
-# Graphe
+# Graph
 petgraph         = "0.6"
 
 # Protobuf (ONNX)
@@ -45,7 +45,7 @@ prost            = "0.13"
 # ZIP (PyTorch)
 zip              = { version = "2.1", default-features = false, features = ["deflate"] }
 
-# Logging et erreurs
+# Logging & errors
 thiserror        = "1.0"
 tracing          = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

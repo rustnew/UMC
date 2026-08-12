@@ -1,11 +1,11 @@
-//! Écran « Réglages » — préférences persistées.
+//! "Settings" screen — persisted preferences.
 
 use eframe::egui;
 use egui::RichText;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Réglages persistés de l'application.
+/// Persisted application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsState {
     pub theme_dark: bool,
@@ -51,18 +51,18 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
 
     egui::CentralPanel::default().show(ui, |ui| {
         ui.add_space(6.0);
-        ui.heading("Réglages");
+        ui.heading("Settings");
         ui.add_space(12.0);
 
         ui.group(|ui| {
-            ui.label(RichText::new("Apparence").strong());
+            ui.label(RichText::new("Appearance").strong());
             ui.add_space(4.0);
-            if ui.selectable_label(*theme_dark, "Thème sombre").clicked() {
+            if ui.selectable_label(*theme_dark, "Dark theme").clicked() {
                 *theme_dark = true;
                 settings.theme_dark = true;
                 changed = true;
             }
-            if ui.selectable_label(!*theme_dark, "Thème clair").clicked() {
+            if ui.selectable_label(!*theme_dark, "Light theme").clicked() {
                 *theme_dark = false;
                 settings.theme_dark = false;
                 changed = true;
@@ -76,7 +76,7 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
             ui.add_space(4.0);
 
             ui.horizontal(|ui| {
-                ui.label("Threads par défaut :");
+                ui.label("Default threads:");
                 if ui
                     .selectable_label(settings.default_threads == 0, "Auto")
                     .clicked()
@@ -96,12 +96,12 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
             ui.add_space(4.0);
 
             ui.horizontal(|ui| {
-                ui.label("Validation par défaut :");
+                ui.label("Default validation:");
                 for (label, val) in [
-                    ("Aucune", "none"),
-                    ("Structurelle", "structural"),
-                    ("Numérique", "numeric"),
-                    ("Stricte", "strict"),
+                    ("None", "none"),
+                    ("Structural", "structural"),
+                    ("Numeric", "numeric"),
+                    ("Strict", "strict"),
                 ] {
                     let selected = settings.default_validation == val;
                     if ui.selectable_label(selected, label).clicked() {
@@ -115,11 +115,11 @@ pub fn show(ui: &mut egui::Ui, settings: &mut SettingsState, theme_dark: &mut bo
         ui.add_space(10.0);
 
         ui.group(|ui| {
-            ui.label(RichText::new("Données").strong());
+            ui.label(RichText::new("Data").strong());
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!(
-                    "Historique et réglages : {}",
+                    "History and settings: {}",
                     crate::history::History::data_dir().display()
                 ))
                 .weak()

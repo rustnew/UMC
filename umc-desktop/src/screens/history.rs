@@ -1,4 +1,4 @@
-//! Écran « Historique » — liste des conversions passées.
+//! "History" screen — list of past conversions.
 
 use eframe::egui;
 use egui::{Color32, RichText};
@@ -9,9 +9,9 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
     egui::CentralPanel::default().show(ui, |ui| {
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.heading("Historique");
+            ui.heading("History");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Vider").clicked() {
+                if ui.button("Clear").clicked() {
                     history.clear();
                 }
             });
@@ -22,12 +22,12 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
             ui.add_space(40.0);
             ui.vertical_centered(|ui| {
                 ui.label(
-                    RichText::new("Aucune conversion pour l'instant.")
+                    RichText::new("No conversion yet.")
                         .weak()
                         .size(15.0),
                 );
                 ui.label(
-                    RichText::new("Lancez une conversion depuis l'écran « Convertir ».")
+                    RichText::new("Start a conversion from the \"Convert\" screen.")
                         .weak()
                         .size(12.0),
                 );
@@ -40,9 +40,9 @@ pub fn show(ui: &mut egui::Ui, history: &mut History) {
                 .striped(true)
                 .min_col_width(90.0)
                 .show(ui, |ui| {
-                    // En-tête
+                    // Header
                     for h in [
-                        "Date", "Source", "Cible", "Tenseurs", "Durée", "Statut", "Fichier",
+                        "Date", "Source", "Target", "Tensors", "Duration", "Status", "File",
                     ] {
                         ui.label(RichText::new(h).strong());
                     }

@@ -1,7 +1,7 @@
-//! UMC Desktop — Universal Model Converter, application de bureau.
+//! UMC Desktop — Universal Model Converter, desktop application.
 //!
-//! Interface native (egui/eframe) pour convertir des modèles entre formats
-//! (GGUF, SafeTensors, ONNX, PyTorch, …) en local, sans serveur.
+//! Native interface (egui/eframe) to convert models between formats
+//! (GGUF, SafeTensors, ONNX, PyTorch, …) locally, without a server.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 

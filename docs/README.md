@@ -8,6 +8,7 @@ the ffmpeg of AI models.
 - [README](../README.md) — Overview, features, quick start
 - [CONTRIBUTING](../CONTRIBUTING.md) — How to contribute
 - [CHANGELOG](../CHANGELOG.md) — Release history
+- [ROADMAP](../ROADMAP.md) — Development plan for upcoming versions
 
 ## Repository Layout
 
@@ -58,9 +59,9 @@ docker compose up -d --build
 ./healthcheck.sh
 ```
 
-> Note : UMC est désormais un outil de bureau local. L'interface utilisateur
-> est l'application native `umc-desktop` (egui/eframe) — il n'y a plus de
-> frontend web. Docker ne sert plus qu'au backend API si vous l'utilisez.
+> Note: UMC is now a local desktop tool. The user interface is the native
+> `umc-desktop` app (egui/eframe) — there is no web frontend anymore.
+> Docker is only needed for the API backend if you use it.
 
 ## API
 
